@@ -178,10 +178,11 @@ function drawEarring(
   const anchorY = imgTop + earring.anchorY * imgDisplayH + earring.offsetY
 
   const baseScale = Math.min(imgDisplayW, imgDisplayH) / 600
-  const finalScale = baseScale * earring.scale
+  const finalScaleX = baseScale * earring.scale
+  const finalScaleY = baseScale * earring.scale * earring.lengthScale
 
-  const w = template.defaultWidth * finalScale
-  const h = template.defaultHeight * finalScale
+  const w = template.defaultWidth * finalScaleX
+  const h = template.defaultHeight * finalScaleY
 
   ctx.save()
   ctx.translate(anchorX, anchorY)
@@ -192,16 +193,13 @@ function drawEarring(
   const img = new Image()
   img.onload = () => {
     URL.revokeObjectURL(url)
+    requestAnimationFrame(render)
   }
   img.src = url
 
+  const anchorRatioX = template.anchorPoint.x / template.defaultWidth
+  const anchorRatioY = template.anchorPoint.y / template.defaultHeight
   if (img.complete && img.naturalWidth > 0) {
-    const anchorRatioX = template.anchorPoint.x / template.defaultWidth
-    const anchorRatioY = template.anchorPoint.y / template.defaultHeight
-    ctx.drawImage(img, -w * anchorRatioX, -h * anchorRatioY, w, h)
-  } else {
-    const anchorRatioX = template.anchorPoint.x / template.defaultWidth
-    const anchorRatioY = template.anchorPoint.y / template.defaultHeight
     ctx.drawImage(img, -w * anchorRatioX, -h * anchorRatioY, w, h)
   }
 
@@ -327,8 +325,28 @@ function render() {
 }
 
 watch(
+  () => store.photo,
+  (newPhoto) => {
+    if (!newPhoto) {
+      loadedImage.value = null
+      return
+    }
+    if (loadedImage.value?.src === newPhoto) return
+    const img = new Image()
+    img.onload = () => {
+      loadedImage.value = img
+      if (store.photoWidth === 0 || store.photoWidth !== img.width) {
+        store.setPhoto(newPhoto, img.width, img.height)
+      }
+      requestAnimationFrame(render)
+    }
+    img.src = newPhoto
+  },
+  { immediate: true }
+)
+
+watch(
   () => [
-    store.photo,
     store.leftEarring,
     store.rightEarring,
     store.leftAnchor,

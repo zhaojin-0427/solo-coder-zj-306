@@ -11,6 +11,8 @@ import {
   X,
 } from 'lucide-vue-next'
 
+defineOptions({ inheritAttrs: false })
+
 const props = defineProps<{
   getCanvas: () => HTMLCanvasElement | null
 }>()

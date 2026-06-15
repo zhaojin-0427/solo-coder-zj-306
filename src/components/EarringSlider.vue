@@ -5,7 +5,7 @@ import { useEarringStore } from '@/stores/useEarringStore'
 interface Props {
   side: 'left' | 'right'
   label: string
-  key: 'offsetY' | 'offsetX' | 'scale' | 'rotation'
+  field: 'offsetY' | 'offsetX' | 'scale' | 'lengthScale' | 'rotation'
   min: number
   max: number
   step: number
@@ -16,23 +16,24 @@ const store = useEarringStore()
 
 const value = computed(() => {
   const earring = props.side === 'left' ? store.leftEarring : store.rightEarring
-  return earring[props.key]
+  return earring[props.field]
 })
 
 const displayValue = computed(() => {
-  if (props.key === 'scale') return (value.value * 100).toFixed(0) + '%'
-  if (props.key === 'rotation') return value.value.toFixed(1) + '°'
-  if (props.key === 'offsetY') return (value.value > 0 ? '↓' : value.value < 0 ? '↑' : '—') + Math.abs(value.value).toFixed(0) + 'px'
-  if (props.key === 'offsetX') return (value.value > 0 ? '→' : value.value < 0 ? '←' : '—') + Math.abs(value.value).toFixed(0) + 'px'
+  if (props.field === 'scale') return (value.value * 100).toFixed(0) + '%'
+  if (props.field === 'lengthScale') return (value.value * 100).toFixed(0) + '%'
+  if (props.field === 'rotation') return value.value.toFixed(1) + '°'
+  if (props.field === 'offsetY') return (value.value > 0 ? '↓' : value.value < 0 ? '↑' : '—') + Math.abs(value.value).toFixed(0) + 'px'
+  if (props.field === 'offsetX') return (value.value > 0 ? '→' : value.value < 0 ? '←' : '—') + Math.abs(value.value).toFixed(0) + 'px'
   return String(value.value)
 })
 
 function update(val: number) {
-  store.updateEarring(props.side, { [props.key]: val })
+  store.updateEarring(props.side, { [props.field]: val })
 }
 
-const effectiveMin = computed(() => (props.key === 'scale' ? props.min : props.min))
-const effectiveMax = computed(() => (props.key === 'scale' ? props.max : props.max))
+const effectiveMin = computed(() => (props.field === 'scale' ? props.min : props.min))
+const effectiveMax = computed(() => (props.field === 'scale' ? props.max : props.max))
 </script>
 
 <template>

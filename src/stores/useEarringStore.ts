@@ -12,16 +12,34 @@ function createDefaultEarring(side: 'left' | 'right'): EarringInstance {
     offsetX: 0,
     offsetY: 0,
     scale: 1,
+    lengthScale: 1,
     rotation: 0,
     anchorX: side === 'left' ? 0.28 : 0.72,
     anchorY: 0.45,
   }
 }
 
+function migrateEarring(e: any): EarringInstance {
+  return {
+    ...e,
+    lengthScale: e.lengthScale ?? 1,
+  }
+}
+
+function migrateScheme(s: any): Scheme {
+  return {
+    ...s,
+    leftEarring: migrateEarring(s.leftEarring),
+    rightEarring: migrateEarring(s.rightEarring),
+  }
+}
+
 function loadSchemes(): Scheme[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.map(migrateScheme) : []
   } catch {
     return []
   }
@@ -109,13 +127,15 @@ export const useEarringStore = defineStore('earring', () => {
   }
 
   function loadScheme(scheme: Scheme) {
+    const left = migrateEarring(scheme.leftEarring)
+    const right = migrateEarring(scheme.rightEarring)
     photo.value = scheme.photoData
-    leftEarring.value = JSON.parse(JSON.stringify(scheme.leftEarring))
-    rightEarring.value = JSON.parse(JSON.stringify(scheme.rightEarring))
-    leftAnchor.value = { x: scheme.leftEarring.anchorX, y: scheme.leftEarring.anchorY }
-    rightAnchor.value = { x: scheme.rightEarring.anchorX, y: scheme.rightEarring.anchorY }
+    leftEarring.value = left
+    rightEarring.value = right
+    leftAnchor.value = { x: left.anchorX, y: left.anchorY }
+    rightAnchor.value = { x: right.anchorX, y: right.anchorY }
     effect.value = JSON.parse(JSON.stringify(scheme.effect))
-    const tmpl = earringTemplates.find((t) => t.id === scheme.leftEarring.templateId)
+    const tmpl = earringTemplates.find((t) => t.id === left.templateId)
     if (tmpl) {
       selectedTemplate.value = tmpl
       selectedTemplateId.value = tmpl.id

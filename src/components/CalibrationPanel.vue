@@ -22,6 +22,7 @@ function syncLeftToRight() {
     offsetX: -left.offsetX,
     offsetY: left.offsetY,
     scale: left.scale,
+    lengthScale: left.lengthScale,
     rotation: -left.rotation,
   })
 }
@@ -32,6 +33,7 @@ function syncRightToLeft() {
     offsetX: -right.offsetX,
     offsetY: right.offsetY,
     scale: right.scale,
+    lengthScale: right.lengthScale,
     rotation: -right.rotation,
   })
 }
@@ -73,23 +75,23 @@ function syncRightToLeft() {
           <EarringSlider
             side="left"
             label="高度 (上下)"
-            key="offsetY"
+            field="offsetY"
             :min="-60"
             :max="60"
             :step="1"
           />
           <EarringSlider
             side="left"
-            label="长度 (左右)"
-            key="offsetX"
-            :min="-60"
-            :max="60"
-            :step="1"
+            label="长度缩放"
+            field="lengthScale"
+            :min="0.5"
+            :max="2"
+            :step="0.05"
           />
           <EarringSlider
             side="left"
             label="尺寸缩放"
-            key="scale"
+            field="scale"
             :min="0.3"
             :max="3"
             :step="0.05"
@@ -97,7 +99,7 @@ function syncRightToLeft() {
           <EarringSlider
             side="left"
             label="角度旋转"
-            key="rotation"
+            field="rotation"
             :min="-45"
             :max="45"
             :step="0.5"
@@ -153,23 +155,23 @@ function syncRightToLeft() {
           <EarringSlider
             side="right"
             label="高度 (上下)"
-            key="offsetY"
+            field="offsetY"
             :min="-60"
             :max="60"
             :step="1"
           />
           <EarringSlider
             side="right"
-            label="长度 (左右)"
-            key="offsetX"
-            :min="-60"
-            :max="60"
-            :step="1"
+            label="长度缩放"
+            field="lengthScale"
+            :min="0.5"
+            :max="2"
+            :step="0.05"
           />
           <EarringSlider
             side="right"
             label="尺寸缩放"
-            key="scale"
+            field="scale"
             :min="0.3"
             :max="3"
             :step="0.05"
@@ -177,7 +179,7 @@ function syncRightToLeft() {
           <EarringSlider
             side="right"
             label="角度旋转"
-            key="rotation"
+            field="rotation"
             :min="-45"
             :max="45"
             :step="0.5"
@@ -211,9 +213,10 @@ function syncRightToLeft() {
         <div class="text-[11px] text-gold/80 font-medium mb-2">💡 适配脸部不对称技巧</div>
         <ul class="text-[10px] text-ivory-muted/70 space-y-1 leading-relaxed">
           <li>• 高低耳：调节双耳「高度」滑块</li>
-          <li>• 前后位：调节「长度」滑块远离/靠近脸部</li>
-          <li>• 耳型差异：单独调节「尺寸缩放」</li>
+          <li>• 耳型大小：调节「尺寸缩放」</li>
+          <li>• 耳饰长短：调节「长度缩放」</li>
           <li>• 倾斜脸：微调「角度旋转」保持视觉平衡</li>
+          <li>• 锚点位置：直接拖拽画布上的蓝/粉点</li>
         </ul>
       </div>
     </div>

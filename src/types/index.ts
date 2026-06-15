@@ -14,6 +14,7 @@ export interface EarringInstance {
   offsetX: number
   offsetY: number
   scale: number
+  lengthScale: number
   rotation: number
   anchorX: number
   anchorY: number
