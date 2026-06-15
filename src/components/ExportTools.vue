@@ -107,17 +107,22 @@ async function exportCompareImage() {
       origImg.src = store.photo!
     })
 
-    const scaleX = canvas.width / store.photoWidth
-    const scaleY = canvas.height / store.photoHeight
-    const scale = Math.min(scaleX, scaleY)
-    const drawW = store.photoWidth * scale
-    const drawH = store.photoHeight * scale
-    const drawX = (canvas.width - drawW) / 2
-    const drawY = (canvas.height - drawH) / 2
+    const photoW = store.photoWidth
+    const photoH = store.photoHeight
+    const scale = store.canvasScale
+    const offsetX = store.canvasOffset.x
+    const offsetY = store.canvasOffset.y
+
+    const imgDisplayW = photoW * scale
+    const imgDisplayH = photoH * scale
+    const imgLeft = (canvas.width - imgDisplayW) / 2 + offsetX
+    const imgTop = (canvas.height - imgDisplayH) / 2 + offsetY
 
     const beforeX = padding
     const beforeY = padding + labelH
-    ctx.drawImage(origImg, drawX, drawY, drawW, drawH, beforeX, beforeY, canvas.width, canvas.height)
+    ctx.fillStyle = '#0f1624'
+    ctx.fillRect(beforeX, beforeY, canvas.width, canvas.height)
+    ctx.drawImage(origImg, 0, 0, origImg.width, origImg.height, beforeX + imgLeft, beforeY + imgTop, imgDisplayW, imgDisplayH)
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
     ctx.fillRect(beforeX, beforeY + canvas.height - 40, canvas.width, 40)
@@ -128,6 +133,8 @@ async function exportCompareImage() {
 
     const afterX = padding * 2 + canvas.width
     const afterY = padding + labelH
+    ctx.fillStyle = '#0f1624'
+    ctx.fillRect(afterX, afterY, canvas.width, canvas.height)
     ctx.drawImage(canvas, afterX, afterY)
 
     ctx.fillStyle = 'rgba(212, 165, 116, 0.25)'

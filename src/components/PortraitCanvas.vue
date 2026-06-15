@@ -17,6 +17,8 @@ const draggingSide = ref<'left' | 'right' | null>(null)
 const isPanning = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 const loadedImage = ref<HTMLImageElement | null>(null)
+const svgImageCache = ref<Map<string, HTMLImageElement>>(new Map())
+const svgLoadingState = ref<Set<string>>(new Set())
 
 const lightingFilters: Record<string, string> = {
   natural: 'none',
@@ -43,6 +45,37 @@ const combinedFilter = computed(() => {
 
 function getTemplate(id: string) {
   return earringTemplates.find((t) => t.id === id) || earringTemplates[0]
+}
+
+function preloadSvg(templateId: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    if (svgImageCache.value.has(templateId)) {
+      resolve(svgImageCache.value.get(templateId)!)
+      return
+    }
+    if (svgLoadingState.value.has(templateId)) {
+      resolve(null)
+      return
+    }
+    const template = getTemplate(templateId)
+    const svgBlob = new Blob([template.svgContent], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(svgBlob)
+    const img = new Image()
+    svgLoadingState.value.add(templateId)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      svgImageCache.value.set(templateId, img)
+      svgLoadingState.value.delete(templateId)
+      requestAnimationFrame(render)
+      resolve(img)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      svgLoadingState.value.delete(templateId)
+      resolve(null)
+    }
+    img.src = url
+  })
 }
 
 function handleFileSelect(e: Event) {
@@ -174,6 +207,15 @@ function drawEarring(
   imgTop: number
 ) {
   const template = getTemplate(earring.templateId)
+  const cachedImg = svgImageCache.value.get(earring.templateId)
+
+  if (!cachedImg) {
+    if (!svgLoadingState.value.has(earring.templateId)) {
+      preloadSvg(earring.templateId)
+    }
+    return
+  }
+
   const anchorX = imgLeft + earring.anchorX * imgDisplayW + earring.offsetX
   const anchorY = imgTop + earring.anchorY * imgDisplayH + earring.offsetY
 
@@ -188,20 +230,9 @@ function drawEarring(
   ctx.translate(anchorX, anchorY)
   ctx.rotate((earring.rotation * Math.PI) / 180)
 
-  const svgBlob = new Blob([template.svgContent], { type: 'image/svg+xml;charset=utf-8' })
-  const url = URL.createObjectURL(svgBlob)
-  const img = new Image()
-  img.onload = () => {
-    URL.revokeObjectURL(url)
-    requestAnimationFrame(render)
-  }
-  img.src = url
-
   const anchorRatioX = template.anchorPoint.x / template.defaultWidth
   const anchorRatioY = template.anchorPoint.y / template.defaultHeight
-  if (img.complete && img.naturalWidth > 0) {
-    ctx.drawImage(img, -w * anchorRatioX, -h * anchorRatioY, w, h)
-  }
+  ctx.drawImage(cachedImg, -w * anchorRatioX, -h * anchorRatioY, w, h)
 
   ctx.restore()
 }
@@ -468,17 +499,17 @@ defineExpose({
       />
       <div
         v-if="!store.photo"
-        class="absolute inset-0 flex items-center justify-center pointer-events-none"
+        class="absolute inset-0 flex items-center justify-center"
       >
         <div
-          class="w-80 h-96 rounded-2xl border-2 border-dashed border-gold/20 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-bg-secondary/50 to-transparent cursor-pointer"
+          class="w-80 h-96 rounded-2xl border-2 border-dashed border-gold/20 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-bg-secondary/50 to-transparent cursor-pointer hover:border-gold/40 hover:bg-gradient-to-br hover:from-bg-secondary/70 hover:to-bg-secondary/30 transition-all duration-300 group"
           @click="fileInputRef?.click()"
         >
-          <div class="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center">
+          <div class="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center group-hover:bg-gold/15 group-hover:scale-110 transition-all duration-300">
             <Upload class="w-7 h-7 text-gold" />
           </div>
           <div class="text-center">
-            <p class="text-gold-light font-medium mb-1">点击上传正脸照片</p>
+            <p class="text-gold-light font-medium mb-1 group-hover:text-gold transition-colors">点击上传正脸照片</p>
             <p class="text-xs text-ivory-muted/70">支持 JPG / PNG 格式</p>
           </div>
         </div>
