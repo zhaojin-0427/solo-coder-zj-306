@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useEarringStore } from '@/stores/useEarringStore'
 import { earringTemplates, categoryLabels } from '@/data/earringTemplates'
-import type { ComparisonSlot, Scheme } from '@/types'
+import type { ComparisonSlot, Scheme, OutfitInspirationCard } from '@/types'
+import {
+  collarTypeLabels,
+  clothingColorLabels,
+  hairLengthLabels,
+  skinToneLabels,
+  outfitSceneLabels,
+  formalityLabels,
+  wearingDurationLabels,
+} from '@/types'
 import {
   Save,
   ImageDown,
@@ -12,12 +21,18 @@ import {
   X,
   LayoutGrid,
   Star,
+  Palette,
 } from 'lucide-vue-next'
 
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   getCanvas: () => HTMLCanvasElement | null
+  outfitExportCard?: OutfitInspirationCard | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'outfit-exported'): void
 }>()
 
 const store = useEarringStore()
@@ -27,6 +42,7 @@ const purchaseCardOpen = ref(false)
 const exportLoading = ref(false)
 const compareExportOpen = ref(false)
 const decisionCardOpen = ref(false)
+const outfitCardOpen = ref(false)
 
 function getTemplate(id: string) {
   return earringTemplates.find((t) => t.id === id) || earringTemplates[0]
@@ -598,6 +614,251 @@ async function exportDecisionCard() {
     exportLoading.value = false
   }
 }
+
+function getScoreColor(score: number) {
+  if (score >= 85) return '#4ade80'
+  if (score >= 75) return '#60a5fa'
+  if (score >= 65) return '#facc15'
+  return '#fb923c'
+}
+
+function getScoreBg(score: number) {
+  if (score >= 85) return 'rgba(74, 222, 128, 0.15)'
+  if (score >= 75) return 'rgba(96, 165, 250, 0.15)'
+  if (score >= 65) return 'rgba(250, 204, 21, 0.15)'
+  return 'rgba(251, 146, 60, 0.15)'
+}
+
+async function exportOutfitCard(card: OutfitInspirationCard) {
+  exportLoading.value = true
+  outfitCardOpen.value = false
+
+  try {
+    const w = 750
+    const h = 1100
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')!
+
+    const grd = ctx.createLinearGradient(0, 0, 0, h)
+    grd.addColorStop(0, '#1a1a2e')
+    grd.addColorStop(0.5, '#16213e')
+    grd.addColorStop(1, '#0f1624')
+    ctx.fillStyle = grd
+    ctx.fillRect(0, 0, w, h)
+
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.25)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(30, 30, w - 60, h - 60)
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.1)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(40, 40, w - 80, h - 80)
+
+    ctx.font = 'bold 28px Playfair Display, Georgia, serif'
+    ctx.fillStyle = '#e8c9a0'
+    ctx.textAlign = 'center'
+    ctx.fillText('Outfit Matching Suggestion', w / 2, 80)
+
+    ctx.font = '13px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(245, 240, 232, 0.6)'
+    ctx.fillText('穿搭搭配建议卡', w / 2, 105)
+
+    let y = 130
+
+    const thumbW = 300
+    const thumbH = 380
+    const thumbX = (w - thumbW) / 2
+    const thumbY = y
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+    ctx.fillRect(thumbX - 4, thumbY - 4, thumbW + 8, thumbH + 8)
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.4)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(thumbX - 4, thumbY - 4, thumbW + 8, thumbH + 8)
+
+    if (card.thumbnail) {
+      try {
+        const thumbImg = await loadImage(card.thumbnail)
+        const scale = Math.min(thumbW / thumbImg.width, thumbH / thumbImg.height)
+        const dw = thumbImg.width * scale
+        const dh = thumbImg.height * scale
+        const dx = thumbX + (thumbW - dw) / 2
+        const dy = thumbY + (thumbH - dh) / 2
+        ctx.drawImage(thumbImg, dx, dy, dw, dh)
+      } catch {
+        ctx.fillStyle = '#0f1624'
+        ctx.fillRect(thumbX, thumbY, thumbW, thumbH)
+      }
+    }
+
+    y += thumbH + 25
+
+    ctx.fillStyle = 'rgba(212, 165, 116, 0.15)'
+    ctx.fillRect(80, y - 15, w - 160, 1)
+
+    const scoreX = 120
+    const scoreY = y + 45
+    const scoreR = 55
+
+    ctx.beginPath()
+    ctx.arc(scoreX, scoreY, scoreR, 0, Math.PI * 2)
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+    ctx.lineWidth = 10
+    ctx.stroke()
+
+    const startAngle = -Math.PI / 2
+    const endAngle = startAngle + (card.matchingResult.totalScore / 100) * Math.PI * 2
+    ctx.beginPath()
+    ctx.arc(scoreX, scoreY, scoreR, startAngle, endAngle)
+    ctx.strokeStyle = getScoreColor(card.matchingResult.totalScore)
+    ctx.lineWidth = 10
+    ctx.lineCap = 'round'
+    ctx.stroke()
+
+    ctx.font = 'bold 32px Playfair Display, Georgia, serif'
+    ctx.fillStyle = getScoreColor(card.matchingResult.totalScore)
+    ctx.textAlign = 'center'
+    ctx.fillText(String(card.matchingResult.totalScore), scoreX, scoreY + 8)
+
+    ctx.font = '11px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(245, 240, 232, 0.5)'
+    ctx.fillText('匹配度', scoreX, scoreY + 28)
+
+    const detailsX = 220
+    let detailY = y
+
+    ctx.font = 'bold 14px Noto Sans SC, sans-serif'
+    ctx.fillStyle = '#e8c9a0'
+    ctx.textAlign = 'left'
+    ctx.fillText(card.name, detailsX, detailY)
+    detailY += 20
+
+    ctx.font = '11px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(245, 240, 232, 0.6)'
+    ctx.fillText(`生成时间: ${new Date(card.createdAt).toLocaleString('zh-CN')}`, detailsX, detailY)
+    detailY += 25
+
+    const leftT = getTemplate(card.leftEarring.templateId)
+    const rightT = getTemplate(card.rightEarring.templateId)
+
+    const outfitRows: [string, string][] = [
+      ['左耳耳饰', `${leftT.name} (${categoryLabels[leftT.category]})`],
+      ['右耳耳饰', `${rightT.name} (${categoryLabels[rightT.category]})`],
+      ['服装领型', collarTypeLabels[card.outfitParams.collarType]],
+      ['服装主色', clothingColorLabels[card.outfitParams.clothingColor]],
+      ['发型长度', hairLengthLabels[card.outfitParams.hairLength]],
+      ['肤色冷暖', skinToneLabels[card.outfitParams.skinTone]],
+      ['使用场景', outfitSceneLabels[card.outfitParams.scene]],
+      ['正式程度', formalityLabels[card.outfitParams.formality]],
+      ['佩戴时长', wearingDurationLabels[card.outfitParams.wearingDuration]],
+      ['妆容光线', `${card.effect.makeupTone} / ${card.effect.lightingMode}`],
+    ]
+
+    for (const [label, value] of outfitRows) {
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.5)'
+      ctx.fillText(label, detailsX, detailY)
+      ctx.fillStyle = '#f5f0e8'
+      ctx.fillText(value, detailsX + 80, detailY)
+      detailY += 18
+    }
+
+    y = detailY + 15
+
+    ctx.font = 'bold 13px Noto Sans SC, sans-serif'
+    ctx.fillStyle = '#e8c9a0'
+    ctx.textAlign = 'left'
+    ctx.fillText('风格标签', 80, y)
+    y += 20
+
+    ctx.font = '10px Noto Sans SC, sans-serif'
+    let tagX = 80
+    const tagY = y
+    for (const tag of card.matchingResult.styleTags.slice(0, 6)) {
+      const tagText = `#${tag}`
+      const tagWidth = ctx.measureText(tagText).width + 16
+      if (tagX + tagWidth > w - 80) {
+        break
+      }
+      ctx.fillStyle = 'rgba(212, 165, 116, 0.15)'
+      ctx.beginPath()
+      ctx.roundRect(tagX, tagY - 12, tagWidth, 22, 4)
+      ctx.fill()
+      ctx.fillStyle = '#e8c9a0'
+      ctx.textAlign = 'center'
+      ctx.fillText(tagText, tagX + tagWidth / 2, tagY + 4)
+      tagX += tagWidth + 6
+    }
+
+    y += 35
+
+    ctx.font = 'bold 13px Noto Sans SC, sans-serif'
+    ctx.fillStyle = '#e8c9a0'
+    ctx.textAlign = 'left'
+    ctx.fillText('搭配建议', 80, y)
+    y += 20
+
+    ctx.font = '11px Noto Sans SC, sans-serif'
+    ctx.textAlign = 'left'
+    for (const suggestion of card.matchingResult.suggestions.slice(0, 3)) {
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.6)'
+      ctx.fillText('•', 80, y)
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.8)'
+      ctx.fillText(suggestion, 92, y)
+      y += 18
+    }
+
+    if (card.notes) {
+      y += 8
+      ctx.font = 'bold 12px Noto Sans SC, sans-serif'
+      ctx.fillStyle = '#e8c9a0'
+      ctx.fillText('备注', 80, y)
+      y += 16
+      ctx.font = '10px Noto Sans SC, sans-serif'
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.6)'
+      const maxWidth = w - 160
+      const words = card.notes.split('')
+      let line = ''
+      for (const word of words) {
+        const testLine = line + word
+        const metrics = ctx.measureText(testLine)
+        if (metrics.width > maxWidth) {
+          ctx.fillText(line, 80, y)
+          line = word
+          y += 14
+        } else {
+          line = testLine
+        }
+      }
+      ctx.fillText(line, 80, y)
+    }
+
+    y = h - 45
+    ctx.font = '10px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(245, 240, 232, 0.4)'
+    ctx.textAlign = 'center'
+    ctx.fillText('穿搭场景灵感板 · 仅供参考，以实物为准', w / 2, y)
+
+    const link = document.createElement('a')
+    link.download = `穿搭建议卡-${card.name}-${Date.now()}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+
+    emit('outfit-exported')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+watch(
+  () => props.outfitExportCard,
+  (card) => {
+    if (card) {
+      outfitCardOpen.value = true
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -867,6 +1128,91 @@ async function exportDecisionCard() {
               <ImageDown v-if="!exportLoading" class="w-4 h-4" />
               <Sparkles v-else class="w-4 h-4 animate-spin" />
               导出决策卡
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div
+      v-if="outfitCardOpen && props.outfitExportCard"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      @click.self="outfitCardOpen = false"
+    >
+      <div class="bg-bg-panel rounded-2xl border border-emerald-500/20 w-full max-w-md animate-fade-in shadow-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gold/10 flex items-center justify-between">
+          <h3 class="text-base font-display text-emerald-300 flex items-center gap-2">
+            <Palette class="w-5 h-5" />
+            穿搭搭配建议卡预览
+          </h3>
+          <button
+            @click="outfitCardOpen = false"
+            class="p-1.5 rounded-lg hover:bg-white/10 text-ivory-muted transition-colors"
+          >
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="p-5">
+          <div class="rounded-xl overflow-hidden border border-emerald-500/15 mb-4">
+            <div class="bg-gradient-to-b from-bg to-bg-secondary/80 py-6 px-4">
+              <div class="text-center">
+                <p class="text-emerald-300 font-display text-lg mb-1">Outfit Matching Suggestion</p>
+                <p class="text-ivory-muted text-xs">穿搭搭配建议卡</p>
+              </div>
+            </div>
+            <div class="p-4 space-y-2 text-xs">
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">方案名称</span>
+                <span class="text-ivory font-medium">{{ props.outfitExportCard.name }}</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">匹配评分</span>
+                <span :style="{ color: getScoreColor(props.outfitExportCard.matchingResult.totalScore) }" class="font-bold">
+                  {{ props.outfitExportCard.matchingResult.totalScore }} 分
+                </span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">使用场景</span>
+                <span class="text-gold-light">{{ outfitSceneLabels[props.outfitExportCard.outfitParams.scene] }}</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">服装</span>
+                <span class="text-ivory">
+                  {{ clothingColorLabels[props.outfitExportCard.outfitParams.clothingColor] }} · 
+                  {{ collarTypeLabels[props.outfitExportCard.outfitParams.collarType] }}
+                </span>
+              </div>
+              <div class="flex justify-between py-1.5">
+                <span class="text-ivory-muted/70">风格标签</span>
+                <span class="text-emerald-300">
+                  {{ props.outfitExportCard.matchingResult.styleTags.slice(0, 3).join(' / ') }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-ivory-muted/60 text-center mb-4">
+            下载后包含完整搭配参数、评分明细、风格标签和文字建议
+          </p>
+
+          <div class="flex gap-2">
+            <button
+              @click="outfitCardOpen = false"
+              class="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-ivory-muted text-sm transition-colors"
+            >
+              关闭
+            </button>
+            <button
+              @click="exportOutfitCard(props.outfitExportCard!)"
+              :disabled="exportLoading"
+              class="flex-1 py-2.5 rounded-lg bg-emerald-500/80 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              <ImageDown v-if="!exportLoading" class="w-4 h-4" />
+              <Sparkles v-else class="w-4 h-4 animate-spin" />
+              下载建议卡
             </button>
           </div>
         </div>

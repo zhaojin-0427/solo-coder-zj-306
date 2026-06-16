@@ -7,11 +7,15 @@ import EffectPanel from '@/components/EffectPanel.vue'
 import HistoryPanel from '@/components/HistoryPanel.vue'
 import ExportTools from '@/components/ExportTools.vue'
 import CompareWorkbench from '@/components/CompareWorkbench.vue'
-import { Gem, Sparkles } from 'lucide-vue-next'
+import OutfitInspirationBoard from '@/components/OutfitInspirationBoard.vue'
+import type { OutfitInspirationCard } from '@/types'
+import { Gem, Sparkles, Palette } from 'lucide-vue-next'
 
 const canvasRef = ref<InstanceType<typeof PortraitCanvas> | null>(null)
 const mainCanvas = ref<HTMLCanvasElement | null>(null)
 const showCompare = ref(false)
+const showInspiration = ref(false)
+const outfitExportCard = ref<OutfitInspirationCard | null>(null)
 
 function onCanvasReady(canvas: HTMLCanvasElement) {
   mainCanvas.value = canvas
@@ -19,6 +23,10 @@ function onCanvasReady(canvas: HTMLCanvasElement) {
 
 function getCanvas(): HTMLCanvasElement | null {
   return canvasRef.value?.getCanvas() || mainCanvas.value
+}
+
+function handleOutfitExportCard(card: OutfitInspirationCard) {
+  outfitExportCard.value = card
 }
 </script>
 
@@ -50,6 +58,18 @@ function getCanvas(): HTMLCanvasElement | null {
           <Sparkles class="w-3.5 h-3.5" />
           {{ showCompare ? '关闭对比' : '方案对比' }}
         </button>
+        <button
+          @click="showInspiration = !showInspiration"
+          :class="[
+            'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5',
+            showInspiration
+              ? 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+              : 'bg-white/5 text-ivory-muted hover:text-ivory hover:bg-white/10 border border-white/10',
+          ]"
+        >
+          <Palette class="w-3.5 h-3.5" />
+          {{ showInspiration ? '关闭灵感板' : '穿搭灵感板' }}
+        </button>
         <div class="hidden md:flex items-center gap-1 text-[11px] text-ivory-muted/70">
           <Sparkles class="w-3.5 h-3.5 text-gold/70" />
           <span>Vue 3 · TypeScript · Canvas 渲染</span>
@@ -71,15 +91,25 @@ function getCanvas(): HTMLCanvasElement | null {
       </aside>
 
       <main class="flex-1 flex flex-col min-w-0 gap-3 overflow-hidden">
-        <div :class="showCompare ? 'flex-[3] min-h-0' : 'flex-1 min-h-0'">
-          <PortraitCanvas ref="canvasRef" @canvas-ready="onCanvasReady" />
-        </div>
-        <div v-if="showCompare" class="flex-[2] min-h-0 overflow-y-auto">
-          <CompareWorkbench />
-        </div>
-        <div class="flex-shrink-0">
-          <ExportTools :get-canvas="getCanvas" />
-        </div>
+        <template v-if="showInspiration">
+          <div class="flex-1 min-h-0 overflow-hidden">
+            <OutfitInspirationBoard @export-card="handleOutfitExportCard" />
+          </div>
+          <div class="flex-shrink-0">
+            <ExportTools :get-canvas="getCanvas" :outfit-export-card="outfitExportCard" @outfit-exported="outfitExportCard = null" />
+          </div>
+        </template>
+        <template v-else>
+          <div :class="showCompare ? 'flex-[3] min-h-0' : 'flex-1 min-h-0'">
+            <PortraitCanvas ref="canvasRef" @canvas-ready="onCanvasReady" />
+          </div>
+          <div v-if="showCompare" class="flex-[2] min-h-0 overflow-y-auto">
+            <CompareWorkbench @enter-inspiration="showInspiration = true; showCompare = false" />
+          </div>
+          <div class="flex-shrink-0">
+            <ExportTools :get-canvas="getCanvas" />
+          </div>
+        </template>
       </main>
 
       <aside class="w-72 flex-shrink-0 flex flex-col gap-3 overflow-hidden">
@@ -87,7 +117,7 @@ function getCanvas(): HTMLCanvasElement | null {
           <CalibrationPanel />
         </div>
         <div class="flex-1 min-h-0">
-          <HistoryPanel />
+          <HistoryPanel @enter-inspiration="showInspiration = true" />
         </div>
       </aside>
     </div>

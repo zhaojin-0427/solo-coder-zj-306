@@ -20,9 +20,19 @@ import {
   BookmarkPlus,
   Pencil,
   SlidersHorizontal,
+  Palette,
 } from 'lucide-vue-next'
 
+const emit = defineEmits<{
+  (e: 'enter-inspiration'): void
+}>()
+
 const store = useEarringStore()
+
+function handleEnterInspirationFromSlot(slotId: string) {
+  store.loadSlotToMain(slotId)
+  emit('enter-inspiration')
+}
 
 const expandedSlotId = ref<string | null>(null)
 const noteSlotId = ref<string | null>(null)
@@ -798,6 +808,15 @@ function handleRedo() {
                   class="flex-1 py-1 text-[9px] rounded bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 transition-colors"
                 >
                   加载到主画布
+                </button>
+              </div>
+              <div class="flex gap-1.5 mt-1.5">
+                <button
+                  @click="handleEnterInspirationFromSlot(slot.id)"
+                  class="flex-1 py-1 text-[9px] rounded bg-teal-500/15 text-teal-300 hover:bg-teal-500/25 transition-colors flex items-center justify-center gap-1"
+                >
+                  <Palette class="w-2.5 h-2.5" />
+                  进入搭配工作台
                 </button>
               </div>
             </div>

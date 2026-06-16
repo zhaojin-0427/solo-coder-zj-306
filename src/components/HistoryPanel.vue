@@ -14,10 +14,21 @@ import {
   Pencil,
   Star,
   X,
+  Palette,
 } from 'lucide-vue-next'
 import type { Scheme } from '@/types'
 
+const emit = defineEmits<{
+  (e: 'enter-inspiration'): void
+}>()
+
 const store = useEarringStore()
+
+function handleEnterInspirationFromScheme(scheme: Scheme, e: Event) {
+  e.stopPropagation()
+  store.loadScheme(scheme)
+  emit('enter-inspiration')
+}
 
 const searchQuery = ref('')
 const filterCategory = ref<'all' | 'stud' | 'drop' | 'hoop' | 'tassel' | 'recommended'>('all')
@@ -288,6 +299,13 @@ const filterOptions = [
                     title="重命名"
                   >
                     <Pencil class="w-3 h-3" />
+                  </button>
+                  <button
+                    @click="handleEnterInspirationFromScheme(scheme, $event)"
+                    class="p-1 rounded text-ivory-muted/60 hover:text-teal-300 hover:bg-teal-500/10 transition-all"
+                    title="进入搭配工作台"
+                  >
+                    <Palette class="w-3 h-3" />
                   </button>
                   <button
                     @click="confirmDelete(scheme.id, $event)"
