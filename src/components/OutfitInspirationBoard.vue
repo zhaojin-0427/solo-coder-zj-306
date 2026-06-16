@@ -50,6 +50,10 @@ import {
   RefreshCw,
 } from 'lucide-vue-next'
 
+const props = defineProps<{
+  getCanvas?: () => HTMLCanvasElement | null
+}>()
+
 const emit = defineEmits<{
   (e: 'export-card', card: OutfitInspirationCard): void
 }>()
@@ -256,16 +260,27 @@ function openCreateModal() {
   showCreateModal.value = true
 }
 
+function generateCurrentThumbnail(): string {
+  const canvas = props.getCanvas?.() || document.querySelector('canvas')
+  if (!canvas) return ''
+  const maxW = 320
+  const scale = Math.min(1, maxW / canvas.width)
+  const tmp = document.createElement('canvas')
+  tmp.width = canvas.width * scale
+  tmp.height = canvas.height * scale
+  const ctx = tmp.getContext('2d')
+  if (ctx) {
+    ctx.drawImage(canvas, 0, 0, tmp.width, tmp.height)
+  }
+  return tmp.toDataURL('image/jpeg', 0.7)
+}
+
 function createNewCard() {
   if (!newCardName.value.trim()) {
     alert('请输入灵感卡名称')
     return
   }
-  const canvas = document.querySelector('canvas')
-  let thumbnail = ''
-  if (canvas) {
-    thumbnail = canvas.toDataURL('image/jpeg', 0.6)
-  }
+  const thumbnail = generateCurrentThumbnail()
   store.createInspirationCard(
     newCardName.value.trim(),
     thumbnail,
@@ -482,13 +497,19 @@ const durationOptions = Object.entries(wearingDurationLabels) as [WearingDuratio
                 ]"
               >
                 <div class="flex gap-2.5">
-                  <div class="relative w-14 h-18 rounded-lg overflow-hidden bg-black/30 flex-shrink-0 border border-white/5">
+                  <div class="relative w-16 aspect-[3/4] rounded-lg overflow-hidden bg-black/30 flex-shrink-0 border border-white/5">
                     <img
                       v-if="card.thumbnail"
                       :src="card.thumbnail"
                       :alt="card.name"
                       class="w-full h-full object-cover"
                     />
+                    <div
+                      v-else
+                      class="w-full h-full flex items-center justify-center text-ivory-muted/40 text-[10px]"
+                    >
+                      暂无图
+                    </div>
                     <div
                       :class="[
                         'absolute top-1 left-1 text-[9px] px-1.5 py-0.5 rounded font-bold',

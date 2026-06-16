@@ -91,18 +91,18 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
       </aside>
 
       <main class="flex-1 flex flex-col min-w-0 gap-3 overflow-hidden">
+        <div v-show="!showInspiration" :class="showCompare ? 'flex-[3] min-h-0' : 'flex-1 min-h-0'">
+          <PortraitCanvas ref="canvasRef" @canvas-ready="onCanvasReady" />
+        </div>
         <template v-if="showInspiration">
           <div class="flex-1 min-h-0 overflow-hidden">
-            <OutfitInspirationBoard @export-card="handleOutfitExportCard" />
+            <OutfitInspirationBoard :get-canvas="getCanvas" @export-card="handleOutfitExportCard" />
           </div>
           <div class="flex-shrink-0">
             <ExportTools :get-canvas="getCanvas" :outfit-export-card="outfitExportCard" @outfit-exported="outfitExportCard = null" />
           </div>
         </template>
         <template v-else>
-          <div :class="showCompare ? 'flex-[3] min-h-0' : 'flex-1 min-h-0'">
-            <PortraitCanvas ref="canvasRef" @canvas-ready="onCanvasReady" />
-          </div>
           <div v-if="showCompare" class="flex-[2] min-h-0 overflow-y-auto">
             <CompareWorkbench @enter-inspiration="showInspiration = true; showCompare = false" />
           </div>

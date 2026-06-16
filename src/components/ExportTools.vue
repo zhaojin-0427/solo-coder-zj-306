@@ -66,7 +66,9 @@ function generateThumbnail(): string {
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous'
+    if (!src.startsWith('data:')) {
+      img.crossOrigin = 'anonymous'
+    }
     img.onload = () => resolve(img)
     img.onerror = reject
     img.src = src
@@ -677,6 +679,9 @@ async function exportOutfitCard(card: OutfitInspirationCard) {
     ctx.lineWidth = 1
     ctx.strokeRect(thumbX - 4, thumbY - 4, thumbW + 8, thumbH + 8)
 
+    ctx.fillStyle = '#0f1624'
+    ctx.fillRect(thumbX, thumbY, thumbW, thumbH)
+
     if (card.thumbnail) {
       try {
         const thumbImg = await loadImage(card.thumbnail)
@@ -687,9 +692,19 @@ async function exportOutfitCard(card: OutfitInspirationCard) {
         const dy = thumbY + (thumbH - dh) / 2
         ctx.drawImage(thumbImg, dx, dy, dw, dh)
       } catch {
-        ctx.fillStyle = '#0f1624'
-        ctx.fillRect(thumbX, thumbY, thumbW, thumbH)
+        ctx.font = '14px Noto Sans SC, sans-serif'
+        ctx.fillStyle = 'rgba(245, 240, 232, 0.4)'
+        ctx.textAlign = 'center'
+        ctx.fillText('图片加载失败', thumbX + thumbW / 2, thumbY + thumbH / 2)
       }
+    } else {
+      ctx.font = '14px Noto Sans SC, sans-serif'
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.4)'
+      ctx.textAlign = 'center'
+      ctx.fillText('暂无缩略图', thumbX + thumbW / 2, thumbY + thumbH / 2)
+      ctx.font = '10px Noto Sans SC, sans-serif'
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.3)'
+      ctx.fillText('请先上传照片并试戴耳饰', thumbX + thumbW / 2, thumbY + thumbH / 2 + 20)
     }
 
     y += thumbH + 25
