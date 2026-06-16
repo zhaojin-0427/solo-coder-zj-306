@@ -48,6 +48,7 @@ import {
   Timer,
   Zap,
   RefreshCw,
+  ShieldAlert,
 } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -56,9 +57,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'export-card', card: OutfitInspirationCard): void
+  (e: 'open-maintenance'): void
 }>()
 
 const store = useEarringStore()
+
+function handleGenerateMaintenance(cardId: string, e: Event) {
+  e.stopPropagation()
+  const materialInfo = store.createMaterialFromInspiration(cardId)
+  if (materialInfo) {
+    store.generatePlansForMaterial(materialInfo.id, 30)
+    emit('open-maintenance')
+  }
+}
 
 const selectedCardId = ref<string | null>(null)
 const editingCardId = ref<string | null>(null)
@@ -622,6 +633,13 @@ const durationOptions = Object.entries(wearingDurationLabels) as [WearingDuratio
                         title="加载到主画布"
                       >
                         <RefreshCw class="w-2.5 h-2.5" />
+                      </button>
+                      <button
+                        @click="handleGenerateMaintenance(card.id, $event)"
+                        class="p-0.5 rounded text-ivory-muted/50 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                        title="生成保养计划"
+                      >
+                        <ShieldAlert class="w-2.5 h-2.5" />
                       </button>
                       <div class="flex-1" />
                       <button

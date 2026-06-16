@@ -15,14 +15,25 @@ import {
   Star,
   X,
   Palette,
+  ShieldAlert,
 } from 'lucide-vue-next'
 import type { Scheme } from '@/types'
 
 const emit = defineEmits<{
   (e: 'enter-inspiration'): void
+  (e: 'open-maintenance'): void
 }>()
 
 const store = useEarringStore()
+
+function handleGenerateMaintenance(schemeId: string, e: Event) {
+  e.stopPropagation()
+  const materialInfo = store.createMaterialFromScheme(schemeId)
+  if (materialInfo) {
+    store.generatePlansForMaterial(materialInfo.id, 30)
+    emit('open-maintenance')
+  }
+}
 
 function handleEnterInspirationFromScheme(scheme: Scheme, e: Event) {
   e.stopPropagation()
@@ -299,6 +310,13 @@ const filterOptions = [
                     title="重命名"
                   >
                     <Pencil class="w-3 h-3" />
+                  </button>
+                  <button
+                    @click="handleGenerateMaintenance(scheme.id, $event)"
+                    class="p-1 rounded text-ivory-muted/60 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all"
+                    title="生成保养计划"
+                  >
+                    <ShieldAlert class="w-3 h-3" />
                   </button>
                   <button
                     @click="handleEnterInspirationFromScheme(scheme, $event)"

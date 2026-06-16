@@ -9,12 +9,14 @@ import ExportTools from '@/components/ExportTools.vue'
 import CompareWorkbench from '@/components/CompareWorkbench.vue'
 import OutfitInspirationBoard from '@/components/OutfitInspirationBoard.vue'
 import type { OutfitInspirationCard } from '@/types'
-import { Gem, Sparkles, Palette } from 'lucide-vue-next'
+import { Gem, Sparkles, Palette, Calendar, ShieldAlert } from 'lucide-vue-next'
+import MaintenanceCalendar from '@/components/MaintenanceCalendar.vue'
 
 const canvasRef = ref<InstanceType<typeof PortraitCanvas> | null>(null)
 const mainCanvas = ref<HTMLCanvasElement | null>(null)
 const showCompare = ref(false)
 const showInspiration = ref(false)
+const showMaintenance = ref(false)
 const outfitExportCard = ref<OutfitInspirationCard | null>(null)
 
 function onCanvasReady(canvas: HTMLCanvasElement) {
@@ -70,6 +72,18 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
           <Palette class="w-3.5 h-3.5" />
           {{ showInspiration ? '关闭灵感板' : '穿搭灵感板' }}
         </button>
+        <button
+          @click="showMaintenance = !showMaintenance"
+          :class="[
+            'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5',
+            showMaintenance
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              : 'bg-white/5 text-ivory-muted hover:text-ivory hover:bg-white/10 border border-white/10',
+          ]"
+        >
+          <ShieldAlert class="w-3.5 h-3.5" />
+          {{ showMaintenance ? '关闭保养' : '材质保养' }}
+        </button>
         <div class="hidden md:flex items-center gap-1 text-[11px] text-ivory-muted/70">
           <Sparkles class="w-3.5 h-3.5 text-gold/70" />
           <span>Vue 3 · TypeScript · Canvas 渲染</span>
@@ -96,7 +110,7 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
         </div>
         <template v-if="showInspiration">
           <div class="flex-1 min-h-0 overflow-hidden">
-            <OutfitInspirationBoard :get-canvas="getCanvas" @export-card="handleOutfitExportCard" />
+            <OutfitInspirationBoard :get-canvas="getCanvas" @export-card="handleOutfitExportCard" @open-maintenance="showMaintenance = true; showInspiration = false" />
           </div>
           <div class="flex-shrink-0">
             <ExportTools :get-canvas="getCanvas" :outfit-export-card="outfitExportCard" @outfit-exported="outfitExportCard = null" />
@@ -104,7 +118,7 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
         </template>
         <template v-else>
           <div v-if="showCompare" class="flex-[2] min-h-0 overflow-y-auto">
-            <CompareWorkbench @enter-inspiration="showInspiration = true; showCompare = false" />
+            <CompareWorkbench @enter-inspiration="showInspiration = true; showCompare = false" @open-maintenance="showMaintenance = true; showCompare = false" />
           </div>
           <div class="flex-shrink-0">
             <ExportTools :get-canvas="getCanvas" />
@@ -117,9 +131,47 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
           <CalibrationPanel />
         </div>
         <div class="flex-1 min-h-0">
-          <HistoryPanel @enter-inspiration="showInspiration = true" />
+          <HistoryPanel @enter-inspiration="showInspiration = true" @open-maintenance="showMaintenance = true" />
         </div>
       </aside>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div
+      v-if="showMaintenance"
+      class="fixed inset-0 z-50 bg-bg/95 backdrop-blur-md animate-fade-in"
+    >
+      <div class="h-full w-full flex flex-col">
+        <div class="h-14 border-b border-gold/10 px-6 flex items-center justify-between bg-bg/80 backdrop-blur-md flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <ShieldAlert class="w-5 h-5 text-bg" />
+            </div>
+            <div>
+              <h1 class="text-base font-display tracking-wider text-emerald-300 leading-tight">
+                Earring Material Care
+              </h1>
+              <p class="text-[10px] text-ivory-muted/60 tracking-wide">耳饰材质敏感风险 · 佩戴保养日历</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-[10px] px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">
+              PORT: 9320
+            </div>
+            <button
+              @click="showMaintenance = false"
+              class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-ivory-muted hover:text-ivory transition-colors"
+              title="关闭保养日历"
+            >
+              <Calendar class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <div class="flex-1 min-h-0 overflow-hidden">
+          <MaintenanceCalendar />
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>

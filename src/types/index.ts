@@ -205,3 +205,226 @@ export const wearingDurationLabels: Record<WearingDuration, string> = {
   'long': '4-8小时',
   'all-day': '全天佩戴',
 }
+
+export type MaterialType =
+  | 'sterling-silver'
+  | 'gold'
+  | 'rose-gold'
+  | 'platinum'
+  | 'titanium'
+  | 'stainless-steel'
+  | 'brass'
+  | 'alloy'
+  | 'copper'
+  | 'plastic'
+  | 'acrylic'
+  | 'resin'
+  | 'pearl'
+  | 'gemstone'
+  | 'wood'
+  | 'leather'
+  | 'other'
+
+export const materialTypeLabels: Record<MaterialType, string> = {
+  'sterling-silver': '925纯银',
+  'gold': '黄金',
+  'rose-gold': '玫瑰金',
+  'platinum': '铂金',
+  'titanium': '钛金属',
+  'stainless-steel': '不锈钢',
+  'brass': '黄铜',
+  'alloy': '合金',
+  'copper': '红铜',
+  'plastic': '塑料',
+  'acrylic': '亚克力',
+  'resin': '树脂',
+  'pearl': '珍珠',
+  'gemstone': '宝石',
+  'wood': '木质',
+  'leather': '皮质',
+  'other': '其他',
+}
+
+export type PlatingProcess =
+  | 'none'
+  | 'gold-plated'
+  | 'rose-gold-plated'
+  | 'silver-plated'
+  | 'rhodium-plated'
+  | 'platinum-plated'
+  | 'vacuum-plated'
+  | 'electroplated'
+  | 'enamel'
+  | 'other'
+
+export const platingProcessLabels: Record<PlatingProcess, string> = {
+  'none': '无镀层',
+  'gold-plated': '镀金',
+  'rose-gold-plated': '镀玫瑰金',
+  'silver-plated': '镀银',
+  'rhodium-plated': '镀铑',
+  'platinum-plated': '镀铂金',
+  'vacuum-plated': '真空镀',
+  'electroplated': '电镀',
+  'enamel': '珐琅',
+  'other': '其他',
+}
+
+export type EarPostMaterial =
+  | 'sterling-silver'
+  | 'titanium'
+  | 'medical-steel'
+  | 'stainless-steel'
+  | 'gold'
+  | 'platinum'
+  | 'copper'
+  | 'alloy'
+  | 'plastic'
+  | 'other'
+
+export const earPostMaterialLabels: Record<EarPostMaterial, string> = {
+  'sterling-silver': '925纯银耳针',
+  'titanium': '钛合金耳针',
+  'medical-steel': '医用钢耳针',
+  'stainless-steel': '不锈钢耳针',
+  'gold': '黄金耳针',
+  'platinum': '铂金耳针',
+  'copper': '红铜耳针',
+  'alloy': '合金耳针',
+  'plastic': '塑料耳针',
+  'other': '其他材质',
+}
+
+export type WeightRange = 'very-light' | 'light' | 'medium' | 'heavy' | 'very-heavy'
+
+export const weightRangeLabels: Record<WeightRange, string> = {
+  'very-light': '极轻 (<3g)',
+  'light': '轻盈 (3-8g)',
+  'medium': '适中 (8-15g)',
+  'heavy': '偏重 (15-25g)',
+  'very-heavy': '厚重 (>25g)',
+}
+
+export type WearingFrequency = 'daily' | 'frequent' | 'weekly' | 'occasional' | 'rare'
+
+export const wearingFrequencyLabels: Record<WearingFrequency, string> = {
+  'daily': '日常佩戴',
+  'frequent': '频繁佩戴',
+  'weekly': '每周佩戴',
+  'occasional': '偶尔佩戴',
+  'rare': '极少佩戴',
+}
+
+export type CleaningCycle = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly'
+
+export const cleaningCycleLabels: Record<CleaningCycle, string> = {
+  'daily': '每日清洁',
+  'weekly': '每周清洁',
+  'biweekly': '每两周清洁',
+  'monthly': '每月清洁',
+  'quarterly': '每季深度清洁',
+}
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'very-high'
+
+export const riskLevelLabels: Record<RiskLevel, string> = {
+  'low': '低风险',
+  'medium': '中风险',
+  'high': '高风险',
+  'very-high': '极高风险',
+}
+
+export const riskLevelColors: Record<RiskLevel, string> = {
+  'low': '#4ade80',
+  'medium': '#facc15',
+  'high': '#fb923c',
+  'very-high': '#ef4444',
+}
+
+export const riskLevelBgColors: Record<RiskLevel, string> = {
+  'low': 'rgba(74, 222, 128, 0.15)',
+  'medium': 'rgba(250, 204, 21, 0.15)',
+  'high': 'rgba(251, 146, 60, 0.15)',
+  'very-high': 'rgba(239, 68, 68, 0.15)',
+}
+
+export interface EarringMaterialInfo {
+  id: string
+  schemeId: string | null
+  slotId: string | null
+  inspirationCardId: string | null
+  name: string
+  thumbnail: string
+  mainMaterial: MaterialType
+  platingProcess: PlatingProcess
+  earPostMaterial: EarPostMaterial
+  weightRange: WeightRange
+  isAllergenic: boolean
+  allergyNotes: string
+  wearingFrequency: WearingFrequency
+  cleaningCycle: CleaningCycle
+  customCleaningDays: number
+  lastCleanedAt: number | null
+  lastWornAt: number | null
+  notes: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface RiskAssessment {
+  score: number
+  level: RiskLevel
+  factors: {
+    name: string
+    score: number
+    description: string
+  }[]
+  warnings: string[]
+}
+
+export type PlanType = 'wear' | 'clean' | 'check' | 'repair'
+
+export const planTypeLabels: Record<PlanType, string> = {
+  'wear': '佩戴计划',
+  'clean': '清洁提醒',
+  'check': '检查提醒',
+  'repair': '保养维修',
+}
+
+export type PlanStatus = 'pending' | 'completed' | 'delayed' | 'cancelled'
+
+export const planStatusLabels: Record<PlanStatus, string> = {
+  'pending': '待完成',
+  'completed': '已完成',
+  'delayed': '已延期',
+  'cancelled': '已取消',
+}
+
+export interface MaintenancePlan {
+  id: string
+  materialInfoId: string
+  type: PlanType
+  title: string
+  description: string
+  date: string
+  time: string
+  status: PlanStatus
+  completedAt: number | null
+  originalDate: string
+  scene: OutfitScene
+  duration: WearingDuration
+  suggestions: string[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface MaintenanceSuggestion {
+  category: 'cleaning' | 'storage' | 'wearing' | 'allergy' | 'repair'
+  title: string
+  content: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+export type ViewMode = 'calendar' | 'list'
+
+export type FilterType = 'all' | 'material' | 'risk' | 'date' | 'status'

@@ -21,13 +21,23 @@ import {
   Pencil,
   SlidersHorizontal,
   Palette,
+  ShieldAlert,
 } from 'lucide-vue-next'
 
 const emit = defineEmits<{
   (e: 'enter-inspiration'): void
+  (e: 'open-maintenance'): void
 }>()
 
 const store = useEarringStore()
+
+function handleGenerateMaintenance(slotId: string) {
+  const materialInfo = store.createMaterialFromSlot(slotId)
+  if (materialInfo) {
+    store.generatePlansForMaterial(materialInfo.id, 30)
+    emit('open-maintenance')
+  }
+}
 
 function handleEnterInspirationFromSlot(slotId: string) {
   store.loadSlotToMain(slotId)
@@ -817,6 +827,15 @@ function handleRedo() {
                 >
                   <Palette class="w-2.5 h-2.5" />
                   进入搭配工作台
+                </button>
+              </div>
+              <div class="flex gap-1.5 mt-1.5">
+                <button
+                  @click="handleGenerateMaintenance(slot.id)"
+                  class="flex-1 py-1 text-[9px] rounded bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition-colors flex items-center justify-center gap-1"
+                >
+                  <ShieldAlert class="w-2.5 h-2.5" />
+                  生成保养计划
                 </button>
               </div>
             </div>
