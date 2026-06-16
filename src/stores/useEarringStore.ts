@@ -5,6 +5,30 @@ import { earringTemplates } from '@/data/earringTemplates'
 
 const STORAGE_KEY = 'earring-tryon-schemes'
 const WORKSPACE_KEY = 'earring-tryon-workspace'
+const PHOTO_KEY = 'earring-tryon-photo'
+
+function loadPhoto(): { data: string | null; width: number; height: number } {
+  try {
+    const raw = localStorage.getItem(PHOTO_KEY)
+    if (!raw) return { data: null, width: 0, height: 0 }
+    const parsed = JSON.parse(raw)
+    return {
+      data: parsed.data || null,
+      width: parsed.width || 0,
+      height: parsed.height || 0,
+    }
+  } catch {
+    return { data: null, width: 0, height: 0 }
+  }
+}
+
+function savePhoto(data: string, width: number, height: number) {
+  try {
+    localStorage.setItem(PHOTO_KEY, JSON.stringify({ data, width, height }))
+  } catch {
+    // storage full
+  }
+}
 
 function createDefaultEarring(side: 'left' | 'right'): EarringInstance {
   return {
@@ -98,9 +122,10 @@ function saveWorkspace(data: { gridMode: GridMode; slots: ComparisonSlot[] }) {
 }
 
 export const useEarringStore = defineStore('earring', () => {
-  const photo = ref<string | null>(null)
-  const photoWidth = ref(0)
-  const photoHeight = ref(0)
+  const savedPhoto = loadPhoto()
+  const photo = ref<string | null>(savedPhoto.data)
+  const photoWidth = ref(savedPhoto.width)
+  const photoHeight = ref(savedPhoto.height)
   const leftAnchor = ref({ x: 0.28, y: 0.45 })
   const rightAnchor = ref({ x: 0.72, y: 0.45 })
   const leftEarring = ref<EarringInstance>(createDefaultEarring('left'))
@@ -132,6 +157,7 @@ export const useEarringStore = defineStore('earring', () => {
     photoWidth.value = width
     photoHeight.value = height
     showAnchors.value = true
+    savePhoto(dataUrl, width, height)
   }
 
   function setAnchor(side: 'left' | 'right', x: number, y: number) {
@@ -359,9 +385,9 @@ export const useEarringStore = defineStore('earring', () => {
   function applyGlobalEffectToSlot(slotId: string) {
     const slot = workspace.value.slots.find((s) => s.id === slotId)
     if (!slot) return
+    if (slot.lockEffect) return
     pushSlotHistory(slotId)
     slot.effect = JSON.parse(JSON.stringify(effect.value))
-    slot.lockEffect = false
   }
 
   function copySlotToSlot(sourceSlotId: string, targetSlotId: string) {

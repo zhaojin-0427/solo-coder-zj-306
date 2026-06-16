@@ -19,6 +19,7 @@ import {
   Check,
   BookmarkPlus,
   Pencil,
+  SlidersHorizontal,
 } from 'lucide-vue-next'
 
 const store = useEarringStore()
@@ -27,6 +28,36 @@ const expandedSlotId = ref<string | null>(null)
 const noteSlotId = ref<string | null>(null)
 const templateDropdownSlotId = ref<string | null>(null)
 const templateDropdownSide = ref<'left' | 'right' | 'both'>('both')
+const fineTuneSlotId = ref<string | null>(null)
+const fineTuneSide = ref<'left' | 'right'>('left')
+
+function toggleFineTune(slotId: string) {
+  if (fineTuneSlotId.value === slotId) {
+    fineTuneSlotId.value = null
+  } else {
+    fineTuneSlotId.value = slotId
+    fineTuneSide.value = 'left'
+  }
+}
+
+function handleSlotSliderChange(
+  slotId: string,
+  side: 'left' | 'right',
+  field: keyof EarringInstance,
+  value: number
+) {
+  store.updateSlotEarring(slotId, side, { [field]: value })
+}
+
+function getFieldDisplay(field: keyof EarringInstance, value: number): string {
+  if (field === 'scale') return (value * 100).toFixed(0) + '%'
+  if (field === 'lengthScale') return (value * 100).toFixed(0) + '%'
+  if (field === 'rotation') return value.toFixed(1) + '°'
+  if (field === 'offsetY') return (value > 0 ? '↓' : value < 0 ? '↑' : '—') + Math.abs(value).toFixed(0) + 'px'
+  if (field === 'offsetX') return (value > 0 ? '→' : value < 0 ? '←' : '—') + Math.abs(value).toFixed(0) + 'px'
+  if (field === 'anchorX' || field === 'anchorY') return (value * 100).toFixed(1) + '%'
+  return String(value)
+}
 
 const lightingFilters: Record<string, string> = {
   natural: 'none',
@@ -509,8 +540,12 @@ function handleRedo() {
               </button>
               <button
                 @click="handleApplyGlobalEffect(slot.id)"
-                class="p-1 rounded text-[10px] bg-white/5 text-ivory-muted hover:text-ivory transition-colors"
-                title="应用全局妆容与光线"
+                :class="[
+                  'p-1 rounded text-[10px] transition-colors',
+                  slot.lockEffect ? 'bg-white/5 text-ivory-muted/30 cursor-not-allowed' : 'bg-white/5 text-ivory-muted hover:text-ivory',
+                ]"
+                :title="slot.lockEffect ? '效果已锁定' : '应用全局妆容与光线'"
+                :disabled="slot.lockEffect"
               >
                 <Sparkles class="w-3 h-3" />
               </button>
@@ -520,6 +555,16 @@ function handleRedo() {
                 title="从主画布复制当前配置"
               >
                 <Copy class="w-3 h-3" />
+              </button>
+              <button
+                @click="toggleFineTune(slot.id)"
+                :class="[
+                  'p-1 rounded text-[10px] transition-colors',
+                  fineTuneSlotId === slot.id ? 'bg-cyan-500/20 text-cyan-300' : 'bg-white/5 text-ivory-muted hover:text-ivory',
+                ]"
+                title="独立微调：高度/长度/尺寸/角度/锚点"
+              >
+                <SlidersHorizontal class="w-3 h-3" />
               </button>
               <div class="flex-1" />
               <button
@@ -542,6 +587,161 @@ function handleRedo() {
               >
                 <Pencil class="w-3 h-3" />
               </button>
+            </div>
+
+            <div v-if="fineTuneSlotId === slot.id" class="p-2 rounded-lg bg-white/5 border border-cyan-500/10">
+              <div class="flex items-center gap-1 mb-2">
+                <button
+                  @click="fineTuneSide = 'left'"
+                  :class="[
+                    'text-[10px] px-2 py-0.5 rounded transition-colors',
+                    fineTuneSide === 'left' ? 'bg-blue-500/20 text-blue-300' : 'text-ivory-muted hover:text-ivory',
+                  ]"
+                >
+                  左耳
+                </button>
+                <button
+                  @click="fineTuneSide = 'right'"
+                  :class="[
+                    'text-[10px] px-2 py-0.5 rounded transition-colors',
+                    fineTuneSide === 'right' ? 'bg-pink-500/20 text-pink-300' : 'text-ivory-muted hover:text-ivory',
+                  ]"
+                >
+                  右耳
+                </button>
+              </div>
+
+              <div class="space-y-1.5">
+                <div class="space-y-0.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-ivory-muted/70">高度</span>
+                    <span class="text-[10px] text-gold font-mono tabular-nums">
+                      {{ getFieldDisplay('offsetY', fineTuneSide === 'left' ? slot.leftEarring.offsetY : slot.rightEarring.offsetY) }}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    :value="fineTuneSide === 'left' ? slot.leftEarring.offsetY : slot.rightEarring.offsetY"
+                    min="-60"
+                    max="60"
+                    step="1"
+                    @input="handleSlotSliderChange(slot.id, fineTuneSide, 'offsetY', Number(($event.target as HTMLInputElement).value))"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-0.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-ivory-muted/70">长度缩放</span>
+                    <span class="text-[10px] text-gold font-mono tabular-nums">
+                      {{ getFieldDisplay('lengthScale', fineTuneSide === 'left' ? slot.leftEarring.lengthScale : slot.rightEarring.lengthScale) }}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    :value="fineTuneSide === 'left' ? slot.leftEarring.lengthScale : slot.rightEarring.lengthScale"
+                    min="0.5"
+                    max="2.5"
+                    step="0.01"
+                    @input="handleSlotSliderChange(slot.id, fineTuneSide, 'lengthScale', Number(($event.target as HTMLInputElement).value))"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-0.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-ivory-muted/70">整体尺寸</span>
+                    <span class="text-[10px] text-gold font-mono tabular-nums">
+                      {{ getFieldDisplay('scale', fineTuneSide === 'left' ? slot.leftEarring.scale : slot.rightEarring.scale) }}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    :value="fineTuneSide === 'left' ? slot.leftEarring.scale : slot.rightEarring.scale"
+                    min="0.5"
+                    max="2.5"
+                    step="0.01"
+                    @input="handleSlotSliderChange(slot.id, fineTuneSide, 'scale', Number(($event.target as HTMLInputElement).value))"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-0.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-ivory-muted/70">旋转角度</span>
+                    <span class="text-[10px] text-gold font-mono tabular-nums">
+                      {{ getFieldDisplay('rotation', fineTuneSide === 'left' ? slot.leftEarring.rotation : slot.rightEarring.rotation) }}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    :value="fineTuneSide === 'left' ? slot.leftEarring.rotation : slot.rightEarring.rotation"
+                    min="-45"
+                    max="45"
+                    step="0.5"
+                    @input="handleSlotSliderChange(slot.id, fineTuneSide, 'rotation', Number(($event.target as HTMLInputElement).value))"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 space-y-0.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-ivory-muted/70">水平位置</span>
+                      <span class="text-[10px] text-gold font-mono tabular-nums">
+                        {{ getFieldDisplay('offsetX', fineTuneSide === 'left' ? slot.leftEarring.offsetX : slot.rightEarring.offsetX) }}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      :value="fineTuneSide === 'left' ? slot.leftEarring.offsetX : slot.rightEarring.offsetX"
+                      min="-60"
+                      max="60"
+                      step="1"
+                      @input="handleSlotSliderChange(slot.id, fineTuneSide, 'offsetX', Number(($event.target as HTMLInputElement).value))"
+                      class="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div class="pt-1 border-t border-white/5 space-y-1.5">
+                  <p class="text-[9px] text-ivory-muted/50">锚点位置（耳洞坐标）</p>
+                  <div class="space-y-0.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-ivory-muted/70">X 坐标</span>
+                      <span class="text-[10px] text-gold font-mono tabular-nums">
+                        {{ getFieldDisplay('anchorX', fineTuneSide === 'left' ? slot.leftEarring.anchorX : slot.rightEarring.anchorX) }}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      :value="fineTuneSide === 'left' ? slot.leftEarring.anchorX : slot.rightEarring.anchorX"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      @input="handleSlotSliderChange(slot.id, fineTuneSide, 'anchorX', Number(($event.target as HTMLInputElement).value))"
+                      class="w-full"
+                    />
+                  </div>
+                  <div class="space-y-0.5">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] text-ivory-muted/70">Y 坐标</span>
+                      <span class="text-[10px] text-gold font-mono tabular-nums">
+                        {{ getFieldDisplay('anchorY', fineTuneSide === 'left' ? slot.leftEarring.anchorY : slot.rightEarring.anchorY) }}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      :value="fineTuneSide === 'left' ? slot.leftEarring.anchorY : slot.rightEarring.anchorY"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      @input="handleSlotSliderChange(slot.id, fineTuneSide, 'anchorY', Number(($event.target as HTMLInputElement).value))"
+                      class="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="flex items-center gap-1 text-[9px] text-ivory-muted/60">
