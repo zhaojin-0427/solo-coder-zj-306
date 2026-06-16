@@ -38,4 +38,34 @@ export interface Scheme {
   leftEarring: EarringInstance
   rightEarring: EarringInstance
   effect: EffectConfig
+  recommended: boolean
+  budget: string
+  materialPreference: string
+  sceneNotes: string
+}
+
+export interface ComparisonSlot {
+  id: string
+  name: string
+  leftEarring: EarringInstance
+  rightEarring: EarringInstance
+  effect: EffectConfig
+  showAnchors: boolean
+  lockEffect: boolean
+  thumbnail: string
+  recommended: boolean
+  budget: string
+  materialPreference: string
+  sceneNotes: string
+}
+
+export type GridMode = 2 | 3 | 4
+
+export interface HistoryEntry {
+  slotId: string
+  leftEarring: EarringInstance
+  rightEarring: EarringInstance
+  effect: EffectConfig
+  showAnchors: boolean
+  lockEffect: boolean
 }
