@@ -68,4 +68,9 @@ export interface HistoryEntry {
   effect: EffectConfig
   showAnchors: boolean
   lockEffect: boolean
+  name: string
+  recommended: boolean
+  budget: string
+  materialPreference: string
+  sceneNotes: string
 }

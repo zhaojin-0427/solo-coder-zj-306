@@ -222,6 +222,13 @@ export const useEarringStore = defineStore('earring', () => {
       selectedTemplateId.value = tmpl.id
     }
     showAnchors.value = true
+    const img = new Image()
+    img.onload = () => {
+      photoWidth.value = img.naturalWidth
+      photoHeight.value = img.naturalHeight
+      savePhoto(scheme.photoData, img.naturalWidth, img.naturalHeight)
+    }
+    img.src = scheme.photoData
   }
 
   function deleteScheme(id: string) {
@@ -291,6 +298,11 @@ export const useEarringStore = defineStore('earring', () => {
       effect: JSON.parse(JSON.stringify(slot.effect)),
       showAnchors: slot.showAnchors,
       lockEffect: slot.lockEffect,
+      name: slot.name,
+      recommended: slot.recommended,
+      budget: slot.budget,
+      materialPreference: slot.materialPreference,
+      sceneNotes: slot.sceneNotes,
     })
     if (undoStack.value.length > MAX_HISTORY) {
       undoStack.value = undoStack.value.slice(-MAX_HISTORY)
@@ -310,12 +322,22 @@ export const useEarringStore = defineStore('earring', () => {
       effect: JSON.parse(JSON.stringify(slot.effect)),
       showAnchors: slot.showAnchors,
       lockEffect: slot.lockEffect,
+      name: slot.name,
+      recommended: slot.recommended,
+      budget: slot.budget,
+      materialPreference: slot.materialPreference,
+      sceneNotes: slot.sceneNotes,
     })
     slot.leftEarring = entry.leftEarring
     slot.rightEarring = entry.rightEarring
     slot.effect = entry.effect
     slot.showAnchors = entry.showAnchors
     slot.lockEffect = entry.lockEffect
+    slot.name = entry.name
+    slot.recommended = entry.recommended
+    slot.budget = entry.budget
+    slot.materialPreference = entry.materialPreference
+    slot.sceneNotes = entry.sceneNotes
   }
 
   function redo() {
@@ -330,12 +352,22 @@ export const useEarringStore = defineStore('earring', () => {
       effect: JSON.parse(JSON.stringify(slot.effect)),
       showAnchors: slot.showAnchors,
       lockEffect: slot.lockEffect,
+      name: slot.name,
+      recommended: slot.recommended,
+      budget: slot.budget,
+      materialPreference: slot.materialPreference,
+      sceneNotes: slot.sceneNotes,
     })
     slot.leftEarring = entry.leftEarring
     slot.rightEarring = entry.rightEarring
     slot.effect = entry.effect
     slot.showAnchors = entry.showAnchors
     slot.lockEffect = entry.lockEffect
+    slot.name = entry.name
+    slot.recommended = entry.recommended
+    slot.budget = entry.budget
+    slot.materialPreference = entry.materialPreference
+    slot.sceneNotes = entry.sceneNotes
   }
 
   function updateSlotEarring(slotId: string, side: 'left' | 'right', props: Partial<EarringInstance>) {
@@ -431,9 +463,16 @@ export const useEarringStore = defineStore('earring', () => {
     }
   }
 
-  function updateSlotMeta(slotId: string, meta: Partial<Pick<ComparisonSlot, 'name' | 'recommended' | 'budget' | 'materialPreference' | 'sceneNotes'>>) {
+  function updateSlotMeta(
+    slotId: string,
+    meta: Partial<Pick<ComparisonSlot, 'name' | 'recommended' | 'budget' | 'materialPreference' | 'sceneNotes'>>,
+    pushHistory = false
+  ) {
     const slot = workspace.value.slots.find((s) => s.id === slotId)
     if (slot) {
+      if (pushHistory) {
+        pushSlotHistory(slotId)
+      }
       Object.assign(slot, meta)
     }
   }

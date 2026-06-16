@@ -286,7 +286,9 @@ watch(
     const img = new Image()
     img.onload = () => {
       loadedImage.value = img
-      nextTick(() => renderAllSlots())
+      nextTick(() => {
+        resizeAllCanvases()
+      })
     }
     img.src = newPhoto
   },
@@ -311,6 +313,9 @@ watch(
 )
 
 onMounted(() => {
+  nextTick(() => {
+    resizeAllCanvases()
+  })
   if (store.photo) {
     const img = new Image()
     img.onload = () => {
@@ -437,7 +442,7 @@ function handleRedo() {
               </span>
               <input
                 :value="slot.name"
-                @change="store.updateSlotMeta(slot.id, { name: ($event.target as HTMLInputElement).value })"
+                @change="store.updateSlotMeta(slot.id, { name: ($event.target as HTMLInputElement).value }, true)"
                 class="text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-ivory border-none outline-none w-20 backdrop-blur-sm"
               />
             </div>
@@ -568,7 +573,7 @@ function handleRedo() {
               </button>
               <div class="flex-1" />
               <button
-                @click="store.updateSlotMeta(slot.id, { recommended: !slot.recommended })"
+                @click="store.updateSlotMeta(slot.id, { recommended: !slot.recommended }, true)"
                 :class="[
                   'p-1 rounded text-[10px] transition-colors',
                   slot.recommended ? 'bg-amber-500/20 text-amber-300' : 'bg-white/5 text-ivory-muted hover:text-amber-300',
@@ -757,7 +762,7 @@ function handleRedo() {
                 <label class="text-[9px] text-ivory-muted/70">预算</label>
                 <input
                   :value="slot.budget"
-                  @input="store.updateSlotMeta(slot.id, { budget: ($event.target as HTMLInputElement).value })"
+                  @change="store.updateSlotMeta(slot.id, { budget: ($event.target as HTMLInputElement).value }, true)"
                   class="w-full text-[10px] px-2 py-1 rounded bg-black/30 border border-white/10 text-ivory outline-none focus:border-gold/40"
                   placeholder="如：500-1000元"
                 />
@@ -766,7 +771,7 @@ function handleRedo() {
                 <label class="text-[9px] text-ivory-muted/70">材质偏好</label>
                 <input
                   :value="slot.materialPreference"
-                  @input="store.updateSlotMeta(slot.id, { materialPreference: ($event.target as HTMLInputElement).value })"
+                  @change="store.updateSlotMeta(slot.id, { materialPreference: ($event.target as HTMLInputElement).value }, true)"
                   class="w-full text-[10px] px-2 py-1 rounded bg-black/30 border border-white/10 text-ivory outline-none focus:border-gold/40"
                   placeholder="如：18K金、银、玫瑰金"
                 />
@@ -775,7 +780,7 @@ function handleRedo() {
                 <label class="text-[9px] text-ivory-muted/70">佩戴场景</label>
                 <input
                   :value="slot.sceneNotes"
-                  @input="store.updateSlotMeta(slot.id, { sceneNotes: ($event.target as HTMLInputElement).value })"
+                  @change="store.updateSlotMeta(slot.id, { sceneNotes: ($event.target as HTMLInputElement).value }, true)"
                   class="w-full text-[10px] px-2 py-1 rounded bg-black/30 border border-white/10 text-ivory outline-none focus:border-gold/40"
                   placeholder="如：日常、婚礼、晚宴"
                 />
