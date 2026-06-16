@@ -2,7 +2,14 @@
 import { ref, watch } from 'vue'
 import { useEarringStore } from '@/stores/useEarringStore'
 import { earringTemplates, categoryLabels } from '@/data/earringTemplates'
-import type { ComparisonSlot, Scheme, OutfitInspirationCard } from '@/types'
+import type { ComparisonSlot, Scheme, OutfitInspirationCard, StorageCard } from '@/types'
+import {
+  giftRecipientLabels,
+  budgetRangeLabels,
+  festivalTagLabels,
+  riskLevelLabels,
+  riskLevelColors,
+} from '@/types'
 import {
   collarTypeLabels,
   clothingColorLabels,
@@ -22,6 +29,7 @@ import {
   LayoutGrid,
   Star,
   Palette,
+  Package,
 } from 'lucide-vue-next'
 
 defineOptions({ inheritAttrs: false })
@@ -29,10 +37,12 @@ defineOptions({ inheritAttrs: false })
 const props = defineProps<{
   getCanvas: () => HTMLCanvasElement | null
   outfitExportCard?: OutfitInspirationCard | null
+  storageExportCard?: StorageCard | null
 }>()
 
 const emit = defineEmits<{
   (e: 'outfit-exported'): void
+  (e: 'storage-exported'): void
 }>()
 
 const store = useEarringStore()
@@ -43,6 +53,7 @@ const exportLoading = ref(false)
 const compareExportOpen = ref(false)
 const decisionCardOpen = ref(false)
 const outfitCardOpen = ref(false)
+const storageCardOpen = ref(false)
 
 function getTemplate(id: string) {
   return earringTemplates.find((t) => t.id === id) || earringTemplates[0]
@@ -874,6 +885,42 @@ watch(
   },
   { immediate: true }
 )
+
+async function exportStorageGiftCard(card: StorageCard) {
+  exportLoading.value = true
+  storageCardOpen.value = false
+
+  try {
+    const dataUrl = store.exportStorageGiftCard(card.id)
+    if (!dataUrl) {
+      alert('导出失败')
+      return
+    }
+
+    const link = document.createElement('a')
+    link.download = `收纳赠礼建议卡-${card.name}-${Date.now()}.png`
+    link.href = dataUrl
+    link.click()
+
+    emit('storage-exported')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+watch(
+  () => props.storageExportCard,
+  (card) => {
+    if (card) {
+      storageCardOpen.value = true
+    }
+  },
+  { immediate: true }
+)
+
+function getCardStorageScore(card: StorageCard) {
+  return store.generateStorageScoreCard(card)
+}
 </script>
 
 <template>
@@ -1224,6 +1271,123 @@ watch(
               @click="exportOutfitCard(props.outfitExportCard!)"
               :disabled="exportLoading"
               class="flex-1 py-2.5 rounded-lg bg-emerald-500/80 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              <ImageDown v-if="!exportLoading" class="w-4 h-4" />
+              <Sparkles v-else class="w-4 h-4 animate-spin" />
+              下载建议卡
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div
+      v-if="storageCardOpen && props.storageExportCard"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      @click.self="storageCardOpen = false"
+    >
+      <div class="bg-bg-panel rounded-2xl border border-indigo-500/20 w-full max-w-md animate-fade-in shadow-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gold/10 flex items-center justify-between">
+          <h3 class="text-base font-display text-indigo-200 flex items-center gap-2">
+            <Package class="w-5 h-5" />
+            收纳赠礼建议卡预览
+          </h3>
+          <button
+            @click="storageCardOpen = false"
+            class="p-1.5 rounded-lg hover:bg-white/10 text-ivory-muted transition-colors"
+          >
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="p-5">
+          <div class="rounded-xl overflow-hidden border border-indigo-500/15 mb-4">
+            <div class="bg-gradient-to-b from-bg to-bg-secondary/80 py-6 px-4">
+              <div class="text-center">
+                <p class="text-indigo-200 font-display text-lg mb-1">Storage & Gift Planner</p>
+                <p class="text-ivory-muted text-xs">耳饰收纳赠礼建议卡</p>
+              </div>
+            </div>
+            <div class="p-4 space-y-2 text-xs">
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">方案名称</span>
+                <span class="text-ivory font-medium">{{ props.storageExportCard.name }}</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">收纳盒编号</span>
+                <span class="text-ivory">{{ props.storageExportCard.storageBoxNumber || '未设置' }}</span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">是否成对</span>
+                <span :class="props.storageExportCard.isPaired ? 'text-green-400' : 'text-amber-400'">
+                  {{ props.storageExportCard.isPaired ? '是 ✓' : '否（单只）' }}
+                </span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">赠礼评分</span>
+                <span
+                  class="font-bold"
+                  :style="{ color: getScoreColor(getCardStorageScore(props.storageExportCard).giftScore) }"
+                >
+                  {{ getCardStorageScore(props.storageExportCard).giftScore }} 分
+                </span>
+              </div>
+              <div class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">适合送礼</span>
+                <span :class="props.storageExportCard.suitableForGift ? 'text-rose-400' : 'text-ivory-muted'">
+                  {{ props.storageExportCard.suitableForGift ? '是 ✓' : '否' }}
+                </span>
+              </div>
+              <div v-if="props.storageExportCard.giftRecipient" class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">赠礼对象</span>
+                <span class="text-rose-300">
+                  {{ giftRecipientLabels[props.storageExportCard.giftRecipient as keyof typeof giftRecipientLabels] }}
+                </span>
+              </div>
+              <div v-if="props.storageExportCard.budgetRange" class="flex justify-between py-1.5 border-b border-white/5">
+                <span class="text-ivory-muted/70">预算区间</span>
+                <span class="text-emerald-300">
+                  {{ budgetRangeLabels[props.storageExportCard.budgetRange as keyof typeof budgetRangeLabels] }}
+                </span>
+              </div>
+              <div class="flex justify-between py-1.5">
+                <span class="text-ivory-muted/70">风险等级</span>
+                <span :style="{ color: riskLevelColors[getCardStorageScore(props.storageExportCard).riskLevel] }">
+                  {{ riskLevelLabels[getCardStorageScore(props.storageExportCard).riskLevel] }}
+                </span>
+              </div>
+              <div v-if="props.storageExportCard.festivalTags.length > 0" class="pt-2 mt-2 border-t border-white/5">
+                <span class="text-ivory-muted/70 text-[11px]">节日标签：</span>
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <span
+                    v-for="f in props.storageExportCard.festivalTags"
+                    :key="f"
+                    class="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-200 text-[10px] border border-rose-500/20"
+                  >
+                    {{ festivalTagLabels[f] }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-ivory-muted/60 text-center mb-4">
+            下载后包含缩略图、完整收纳信息、赠礼评分、推荐理由和贴心建议
+          </p>
+
+          <div class="flex gap-2">
+            <button
+              @click="storageCardOpen = false"
+              class="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-ivory-muted text-sm transition-colors"
+            >
+              关闭
+            </button>
+            <button
+              @click="exportStorageGiftCard(props.storageExportCard!)"
+              :disabled="exportLoading"
+              class="flex-1 py-2.5 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-medium text-sm flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 shadow-lg shadow-indigo-500/20"
             >
               <ImageDown v-if="!exportLoading" class="w-4 h-4" />
               <Sparkles v-else class="w-4 h-4 animate-spin" />

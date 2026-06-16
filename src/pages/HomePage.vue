@@ -8,16 +8,19 @@ import HistoryPanel from '@/components/HistoryPanel.vue'
 import ExportTools from '@/components/ExportTools.vue'
 import CompareWorkbench from '@/components/CompareWorkbench.vue'
 import OutfitInspirationBoard from '@/components/OutfitInspirationBoard.vue'
-import type { OutfitInspirationCard } from '@/types'
-import { Gem, Sparkles, Palette, Calendar, ShieldAlert } from 'lucide-vue-next'
+import type { OutfitInspirationCard, StorageCard } from '@/types'
+import { Gem, Sparkles, Palette, Calendar, ShieldAlert, Package } from 'lucide-vue-next'
 import MaintenanceCalendar from '@/components/MaintenanceCalendar.vue'
+import StoragePlanner from '@/components/StoragePlanner.vue'
 
 const canvasRef = ref<InstanceType<typeof PortraitCanvas> | null>(null)
 const mainCanvas = ref<HTMLCanvasElement | null>(null)
 const showCompare = ref(false)
 const showInspiration = ref(false)
 const showMaintenance = ref(false)
+const showStorage = ref(false)
 const outfitExportCard = ref<OutfitInspirationCard | null>(null)
+const storageExportCard = ref<StorageCard | null>(null)
 
 function onCanvasReady(canvas: HTMLCanvasElement) {
   mainCanvas.value = canvas
@@ -29,6 +32,10 @@ function getCanvas(): HTMLCanvasElement | null {
 
 function handleOutfitExportCard(card: OutfitInspirationCard) {
   outfitExportCard.value = card
+}
+
+function handleStorageExportCard(card: StorageCard) {
+  storageExportCard.value = card
 }
 </script>
 
@@ -84,6 +91,18 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
           <ShieldAlert class="w-3.5 h-3.5" />
           {{ showMaintenance ? '关闭保养' : '材质保养' }}
         </button>
+        <button
+          @click="showStorage = !showStorage"
+          :class="[
+            'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5',
+            showStorage
+              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+              : 'bg-white/5 text-ivory-muted hover:text-ivory hover:bg-white/10 border border-white/10',
+          ]"
+        >
+          <Package class="w-3.5 h-3.5" />
+          {{ showStorage ? '关闭收纳' : '收纳赠礼' }}
+        </button>
         <div class="hidden md:flex items-center gap-1 text-[11px] text-ivory-muted/70">
           <Sparkles class="w-3.5 h-3.5 text-gold/70" />
           <span>Vue 3 · TypeScript · Canvas 渲染</span>
@@ -113,15 +132,15 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
             <OutfitInspirationBoard :get-canvas="getCanvas" @export-card="handleOutfitExportCard" @open-maintenance="showMaintenance = true; showInspiration = false" />
           </div>
           <div class="flex-shrink-0">
-            <ExportTools :get-canvas="getCanvas" :outfit-export-card="outfitExportCard" @outfit-exported="outfitExportCard = null" />
+            <ExportTools :get-canvas="getCanvas" :outfit-export-card="outfitExportCard" :storage-export-card="storageExportCard" @outfit-exported="outfitExportCard = null" @storage-exported="storageExportCard = null" />
           </div>
         </template>
         <template v-else>
           <div v-if="showCompare" class="flex-[2] min-h-0 overflow-y-auto">
-            <CompareWorkbench @enter-inspiration="showInspiration = true; showCompare = false" @open-maintenance="showMaintenance = true; showCompare = false" />
+            <CompareWorkbench @enter-inspiration="showInspiration = true; showCompare = false" @open-maintenance="showMaintenance = true; showCompare = false" @open-storage="showStorage = true; showCompare = false" />
           </div>
           <div class="flex-shrink-0">
-            <ExportTools :get-canvas="getCanvas" />
+            <ExportTools :get-canvas="getCanvas" :storage-export-card="storageExportCard" @storage-exported="storageExportCard = null" />
           </div>
         </template>
       </main>
@@ -131,7 +150,7 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
           <CalibrationPanel />
         </div>
         <div class="flex-1 min-h-0">
-          <HistoryPanel @enter-inspiration="showInspiration = true" @open-maintenance="showMaintenance = true" />
+          <HistoryPanel @enter-inspiration="showInspiration = true" @open-maintenance="showMaintenance = true" @open-storage="showStorage = true" />
         </div>
       </aside>
     </div>
@@ -169,7 +188,45 @@ function handleOutfitExportCard(card: OutfitInspirationCard) {
           </div>
         </div>
         <div class="flex-1 min-h-0 overflow-hidden">
-          <MaintenanceCalendar />
+          <MaintenanceCalendar @open-storage="showMaintenance = false; showStorage = true" />
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div
+      v-if="showStorage"
+      class="fixed inset-0 z-50 bg-bg/95 backdrop-blur-md animate-fade-in"
+    >
+      <div class="h-full w-full flex flex-col">
+        <div class="h-14 border-b border-gold/10 px-6 flex items-center justify-between bg-bg/80 backdrop-blur-md flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Package class="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 class="text-base font-display tracking-wider text-indigo-200 leading-tight">
+                Earring Storage & Gift Planner
+              </h1>
+              <p class="text-[10px] text-ivory-muted/60 tracking-wide">耳饰收纳管理 · 赠礼智能规划 · 30天提醒</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-[10px] px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono">
+              PORT: 9320
+            </div>
+            <button
+              @click="showStorage = false"
+              class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-ivory-muted hover:text-ivory transition-colors"
+              title="关闭收纳规划"
+            >
+              <Package class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <div class="flex-1 min-h-0 overflow-hidden">
+          <StoragePlanner @open-maintenance="showMaintenance = true; showStorage = false" @export-card="handleStorageExportCard" />
         </div>
       </div>
     </div>

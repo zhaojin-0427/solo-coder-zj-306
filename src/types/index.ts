@@ -428,3 +428,178 @@ export interface MaintenanceSuggestion {
 export type ViewMode = 'calendar' | 'list'
 
 export type FilterType = 'all' | 'material' | 'risk' | 'date' | 'status'
+
+export type GiftRecipient =
+  | 'mother'
+  | 'sister'
+  | 'girlfriend'
+  | 'wife'
+  | 'friend'
+  | 'colleague'
+  | 'elder'
+  | 'child'
+  | 'teacher'
+  | 'other'
+
+export const giftRecipientLabels: Record<GiftRecipient, string> = {
+  'mother': '妈妈',
+  'sister': '姐妹',
+  'girlfriend': '女朋友',
+  'wife': '妻子',
+  'friend': '朋友',
+  'colleague': '同事',
+  'elder': '长辈',
+  'child': '晚辈',
+  'teacher': '老师',
+  'other': '其他',
+}
+
+export type BudgetRange =
+  | 'under-50'
+  | '50-100'
+  | '100-300'
+  | '300-500'
+  | '500-1000'
+  | '1000-3000'
+  | '3000-plus'
+
+export const budgetRangeLabels: Record<BudgetRange, string> = {
+  'under-50': '50元以下',
+  '50-100': '50-100元',
+  '100-300': '100-300元',
+  '300-500': '300-500元',
+  '500-1000': '500-1000元',
+  '1000-3000': '1000-3000元',
+  '3000-plus': '3000元以上',
+}
+
+export type FestivalTag =
+  | 'spring-festival'
+  | 'valentines'
+  | 'womens-day'
+  | 'mothers-day'
+  | 'dragon-boat'
+  | 'qixi'
+  | 'mid-autumn'
+  | 'teachers-day'
+  | 'national-day'
+  | 'christmas'
+  | 'new-year'
+  | 'birthday'
+  | 'anniversary'
+  | 'graduation'
+  | 'housewarming'
+  | 'thank-you'
+  | 'other'
+
+export const festivalTagLabels: Record<FestivalTag, string> = {
+  'spring-festival': '春节',
+  'valentines': '情人节',
+  'womens-day': '妇女节',
+  'mothers-day': '母亲节',
+  'dragon-boat': '端午节',
+  'qixi': '七夕',
+  'mid-autumn': '中秋节',
+  'teachers-day': '教师节',
+  'national-day': '国庆节',
+  'christmas': '圣诞节',
+  'new-year': '元旦',
+  'birthday': '生日',
+  'anniversary': '纪念日',
+  'graduation': '毕业季',
+  'housewarming': '乔迁',
+  'thank-you': '答谢',
+  'other': '其他',
+}
+
+export const festivalTagMonth: Record<FestivalTag, number[]> = {
+  'spring-festival': [1, 2],
+  'valentines': [2],
+  'womens-day': [3],
+  'mothers-day': [5],
+  'dragon-boat': [5, 6],
+  'qixi': [7, 8],
+  'mid-autumn': [9, 10],
+  'teachers-day': [9],
+  'national-day': [10],
+  'christmas': [12],
+  'new-year': [1],
+  'birthday': [],
+  'anniversary': [],
+  'graduation': [6, 7],
+  'housewarming': [],
+  'thank-you': [],
+  'other': [],
+}
+
+export type StorageViewMode = 'card' | 'list'
+
+export type StorageFilterField =
+  | 'all'
+  | 'scene'
+  | 'budget'
+  | 'risk'
+  | 'festival'
+  | 'isPaired'
+  | 'suitableForGift'
+  | 'isFavorite'
+
+export interface StorageCard {
+  id: string
+  schemeId: string | null
+  materialInfoId: string | null
+  name: string
+  thumbnail: string
+  storageBoxNumber: string
+  isPaired: boolean
+  lastWornAt: number | null
+  suitableForGift: boolean
+  giftRecipient: GiftRecipient | ''
+  budgetRange: BudgetRange | ''
+  festivalTags: FestivalTag[]
+  isFavorite: boolean
+  notes: string
+  scene: OutfitScene | ''
+  leftEarring: EarringInstance
+  rightEarring: EarringInstance
+  effect: EffectConfig
+  createdAt: number
+  updatedAt: number
+}
+
+export interface StorageSuggestion {
+  category: 'storage' | 'gift' | 'wear' | 'care'
+  title: string
+  content: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+export interface GiftRecommendation {
+  score: number
+  reasons: string[]
+  suitableRecipients: GiftRecipient[]
+  suitableFestivals: FestivalTag[]
+  suggestions: string[]
+}
+
+export interface StorageScoreCard {
+  storageScore: number
+  giftScore: number
+  priorityScore: number
+  riskLevel: RiskLevel
+  storageSuggestions: StorageSuggestion[]
+  giftRecommendation: GiftRecommendation
+}
+
+export interface StorageReminder {
+  id: string
+  cardId: string
+  cardName: string
+  thumbnail: string
+  type: 'wear' | 'clean' | 'gift' | 'festival'
+  title: string
+  content: string
+  targetDate: string
+  festivalTag?: FestivalTag
+  createdAt: number
+}

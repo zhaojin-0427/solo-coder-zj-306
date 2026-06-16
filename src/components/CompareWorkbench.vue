@@ -22,11 +22,13 @@ import {
   SlidersHorizontal,
   Palette,
   ShieldAlert,
+  Package,
 } from 'lucide-vue-next'
 
 const emit = defineEmits<{
   (e: 'enter-inspiration'): void
   (e: 'open-maintenance'): void
+  (e: 'open-storage'): void
 }>()
 
 const store = useEarringStore()
@@ -37,6 +39,11 @@ function handleGenerateMaintenance(slotId: string) {
     store.generatePlansForMaterial(materialInfo.id, 30)
     emit('open-maintenance')
   }
+}
+
+function handleGenerateStorageCard(slotId: string) {
+  store.createStorageCardFromSlot(slotId)
+  emit('open-storage')
 }
 
 function handleEnterInspirationFromSlot(slotId: string) {
@@ -827,6 +834,15 @@ function handleRedo() {
                 >
                   <Palette class="w-2.5 h-2.5" />
                   进入搭配工作台
+                </button>
+              </div>
+              <div class="flex gap-1.5 mt-1.5">
+                <button
+                  @click="handleGenerateStorageCard(slot.id)"
+                  class="flex-1 py-1 text-[9px] rounded bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 transition-colors flex items-center justify-center gap-1"
+                >
+                  <Package class="w-2.5 h-2.5" />
+                  加入收纳清单
                 </button>
               </div>
               <div class="flex gap-1.5 mt-1.5">

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type {
   EarringInstance,
   EarringTemplate,
@@ -27,6 +27,14 @@ import type {
   WearingDuration,
   RiskLevel,
   riskLevelLabels,
+  GiftRecipient,
+  BudgetRange,
+  FestivalTag,
+  StorageCard,
+  StorageSuggestion,
+  GiftRecommendation,
+  StorageScoreCard,
+  StorageReminder,
 } from '@/types'
 import {
   materialTypeLabels,
@@ -38,8 +46,14 @@ import {
   planTypeLabels,
   planStatusLabels,
   wearingDurationLabels,
+  outfitSceneLabels,
+  giftRecipientLabels,
+  budgetRangeLabels,
+  festivalTagLabels,
+  festivalTagMonth,
+  riskLevelColors,
 } from '@/types'
-import { earringTemplates } from '@/data/earringTemplates'
+import { earringTemplates, categoryLabels } from '@/data/earringTemplates'
 
 const STORAGE_KEY = 'earring-tryon-schemes'
 const WORKSPACE_KEY = 'earring-tryon-workspace'
@@ -47,6 +61,7 @@ const PHOTO_KEY = 'earring-tryon-photo'
 const INSPIRATION_KEY = 'earring-tryon-inspiration'
 const MATERIAL_INFO_KEY = 'earring-tryon-material-info'
 const MAINTENANCE_PLANS_KEY = 'earring-tryon-maintenance-plans'
+const STORAGE_CARDS_KEY = 'earring-storage-cards'
 
 function loadPhoto(): { data: string | null; width: number; height: number } {
   try {
@@ -1835,6 +1850,1017 @@ export const useEarringStore = defineStore('earring', () => {
     return canvas.toDataURL('image/png')
   }
 
+  function loadStorageCards(): StorageCard[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_CARDS_KEY)
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  function saveStorageCards(cards: StorageCard[]) {
+    try {
+      localStorage.setItem(STORAGE_CARDS_KEY, JSON.stringify(cards))
+    } catch {
+      // storage full
+    }
+  }
+
+  const storageCards = ref<StorageCard[]>(loadStorageCards())
+
+  watch(storageCards, (val) => saveStorageCards(val), { deep: true })
+
+  const styleCategoryMap: Record<string, string[]> = {
+    '简约精致': ['stud'],
+    '优雅垂坠': ['drop'],
+    '时尚圈环': ['hoop'],
+    '灵动流苏': ['tassel'],
+    '干练专业': ['stud', 'hoop'],
+    '隆重华丽': ['drop', 'tassel'],
+    '浪漫吸睛': ['drop', 'hoop'],
+    '轻松随性': ['stud', 'hoop'],
+    '经典平衡': ['stud', 'hoop'],
+    '个性混搭': [],
+    '夸张醒目': ['hoop', 'tassel'],
+    '短发突出': ['drop', 'tassel', 'hoop'],
+    '纵向延伸': ['drop', 'tassel'],
+    'V领呼应': ['drop'],
+    '肩颈线条优化': ['drop', 'tassel'],
+    '舒适持久': ['stud'],
+    '对称和谐': [],
+  }
+
+  function deriveStyleTagsFromCard(card: StorageCard): string[] {
+    const leftT = earringTemplates.find((t) => t.id === card.leftEarring.templateId)
+    const rightT = earringTemplates.find((t) => t.id === card.rightEarring.templateId)
+    const tags: string[] = []
+    const categories = new Set([leftT?.category, rightT?.category])
+    if (categories.has('stud')) tags.push('简约精致')
+    if (categories.has('drop')) tags.push('优雅垂坠')
+    if (categories.has('hoop')) tags.push('时尚圈环')
+    if (categories.has('tassel')) tags.push('灵动流苏')
+    if (leftT?.category === rightT?.category) tags.push('对称和谐')
+    if (card.scene === 'wedding' || card.scene === 'dinner') {
+      tags.push('隆重华丽')
+    } else if (card.scene === 'commute' || card.scene === 'business') {
+      tags.push('干练专业')
+    } else if (card.scene === 'date' || card.scene === 'party') {
+      tags.push('浪漫吸睛')
+    } else if (card.scene === 'travel' || card.scene === 'casual') {
+      tags.push('轻松随性')
+    }
+    return [...new Set(tags)]
+  }
+
+  function guessEarringStyle(card: StorageCard): { elegance: number; trendy: number; casual: number; formal: number; romantic: number } {
+    const leftT = earringTemplates.find((t) => t.id === card.leftEarring.templateId)
+    const rightT = earringTemplates.find((t) => t.id === card.rightEarring.templateId)
+    const avgScale = (card.leftEarring.scale + card.rightEarring.scale) / 2
+    const avgLengthScale = (card.leftEarring.lengthScale + card.rightEarring.lengthScale) / 2
+    let elegance = 40, trendy = 40, casual = 40, formal = 30, romantic = 40
+
+    for (const cat of [leftT?.category, rightT?.category]) {
+      if (cat === 'stud') { casual += 20; formal += 10; elegance += 10 }
+      if (cat === 'drop') { elegance += 30; formal += 20; romantic += 20 }
+      if (cat === 'hoop') { trendy += 30; casual += 10 }
+      if (cat === 'tassel') { trendy += 25; romantic += 25; elegance += 10 }
+    }
+
+    if (avgScale > 1.3) { trendy += 15; romantic += 10 }
+    if (avgLengthScale > 1.3) { elegance += 15; formal += 10 }
+    if (card.scene === 'wedding' || card.scene === 'dinner') { formal += 30; elegance += 20; romantic += 10 }
+    if (card.scene === 'date') { romantic += 30; elegance += 10 }
+    if (card.scene === 'party') { trendy += 25; romantic += 15 }
+    if (card.scene === 'business' || card.scene === 'commute') { formal += 25; casual -= 10 }
+    if (card.scene === 'casual' || card.scene === 'travel') { casual += 25; formal -= 15 }
+
+    return {
+      elegance: Math.min(100, Math.max(0, elegance)),
+      trendy: Math.min(100, Math.max(0, trendy)),
+      casual: Math.min(100, Math.max(0, casual)),
+      formal: Math.min(100, Math.max(0, formal)),
+      romantic: Math.min(100, Math.max(0, romantic)),
+    }
+  }
+
+  function generateStorageSuggestions(card: StorageCard): StorageSuggestion[] {
+    const suggestions: StorageSuggestion[] = []
+    const materialInfo = card.materialInfoId
+      ? materialInfoList.value.find((m) => m.id === card.materialInfoId)
+      : null
+    const style = guessEarringStyle(card)
+    const tags = deriveStyleTagsFromCard(card)
+
+    if (!card.storageBoxNumber || card.storageBoxNumber.trim() === '') {
+      suggestions.push({
+        category: 'storage',
+        title: '分配收纳盒',
+        content: '建议为这副耳饰指定收纳盒编号，便于快速查找。可按材质、风格或使用频率分区存放。',
+        priority: 'high',
+      })
+    }
+
+    if (!card.isPaired) {
+      suggestions.push({
+        category: 'storage',
+        title: '单只耳饰收纳',
+        content: '标记为单只耳饰，建议使用带分格的收纳盒单独存放，避免与其他耳饰混淆，可用小标签标注。',
+        priority: 'medium',
+      })
+    } else {
+      suggestions.push({
+        category: 'storage',
+        title: '成对收纳',
+        content: '成对耳饰建议使用成对卡槽或小密封袋收纳，防止丢失其中一只，保持配对完整。',
+        priority: 'low',
+      })
+    }
+
+    if (materialInfo) {
+      const mat = materialInfo.mainMaterial
+      if (['sterling-silver', 'copper', 'brass'].includes(mat)) {
+        suggestions.push({
+          category: 'storage',
+          title: '防氧化收纳',
+          content: `${materialTypeLabels[mat]}容易氧化变色，建议放入带干燥剂的密封袋或抗氧化首饰盒中单独存放。`,
+          priority: 'high',
+        })
+      }
+      if (mat === 'pearl') {
+        suggestions.push({
+          category: 'storage',
+          title: '珍珠专用收纳',
+          content: '珍珠质地娇贵，应用柔软绒布单独包裹，避免与硬物接触刮花，远离高温和化学品。',
+          priority: 'high',
+        })
+      }
+      if (mat === 'gemstone') {
+        suggestions.push({
+          category: 'storage',
+          title: '宝石保护收纳',
+          content: '宝石首饰应单独存放防止磕碰，用软布包裹后放入带衬垫的首饰盒格中。',
+          priority: 'medium',
+        })
+      }
+      if (materialInfo.weightRange === 'heavy' || materialInfo.weightRange === 'very-heavy') {
+        suggestions.push({
+          category: 'storage',
+          title: '承重收纳',
+          content: '耳饰偏重，建议悬挂式或平放在带衬垫的托盘上，避免长期悬挂导致耳针变形。',
+          priority: 'medium',
+        })
+      }
+    }
+
+    if (style.formal >= 70 || tags.includes('隆重华丽')) {
+      suggestions.push({
+        category: 'storage',
+        title: '贵重场合款单独存放',
+        content: '此款适合隆重场合，建议单独放置在首饰盒醒目位置或专用贵重首饰层，重要时刻便于快速取用。',
+        priority: 'medium',
+      })
+    }
+
+    if (style.casual >= 70 || tags.includes('轻松随性') || tags.includes('简约精致')) {
+      suggestions.push({
+        category: 'storage',
+        title: '日常款便捷收纳',
+        content: '日常佩戴款式建议放置在梳妆台随手可及的收纳盘或首饰架上，方便每日搭配。',
+        priority: 'low',
+      })
+    }
+
+    if (card.lastWornAt) {
+      const daysSince = Math.floor((Date.now() - card.lastWornAt) / (1000 * 60 * 60 * 24))
+      if (daysSince >= 30) {
+        suggestions.push({
+          category: 'wear',
+          title: '长期未佩戴提醒',
+          content: `已 ${daysSince} 天未佩戴此款耳饰，不妨找个机会重新戴上它，或考虑转赠给合适的朋友。`,
+          priority: 'low',
+        })
+      } else if (daysSince >= 14) {
+        suggestions.push({
+          category: 'wear',
+          title: '定期佩戴建议',
+          content: `已 ${daysSince} 天未佩戴，可将其纳入近一周的穿搭计划中。`,
+          priority: 'low',
+        })
+      }
+    }
+
+    if (materialInfo) {
+      const risk = assessRisk(materialInfo, 'medium')
+      if (risk.score >= 40) {
+        suggestions.push({
+          category: 'care',
+          title: '敏感款收纳提示',
+          content: '此款过敏风险较高，建议收纳前用酒精棉片擦拭耳针消毒，干燥后再存放。',
+          priority: 'medium',
+        })
+      }
+    }
+
+    suggestions.sort((a, b) => {
+      const order = { high: 0, medium: 1, low: 2 }
+      return order[a.priority] - order[b.priority]
+    })
+
+    return suggestions.slice(0, 6)
+  }
+
+  function generateGiftRecommendation(card: StorageCard): GiftRecommendation {
+    const materialInfo = card.materialInfoId
+      ? materialInfoList.value.find((m) => m.id === card.materialInfoId)
+      : null
+    const style = guessEarringStyle(card)
+    const tags = deriveStyleTagsFromCard(card)
+    const reasons: string[] = []
+    const suitableRecipients: GiftRecipient[] = []
+    const suitableFestivals: FestivalTag[] = []
+    const suggestions: string[] = []
+    let score = 0
+
+    if (card.budgetRange === 'under-50' || card.budgetRange === '50-100') {
+      score += 25
+      reasons.push('预算亲民，适合作为日常小礼物')
+      suitableRecipients.push('friend', 'colleague', 'child')
+      suitableFestivals.push('thank-you', 'graduation')
+    } else if (card.budgetRange === '100-300' || card.budgetRange === '300-500') {
+      score += 35
+      reasons.push('预算适中，适合大多数节日赠礼场景')
+      suitableRecipients.push('girlfriend', 'sister', 'friend', 'teacher')
+      suitableFestivals.push('valentines', 'womens-day', 'teachers-day', 'birthday', 'qixi')
+    } else if (card.budgetRange === '500-1000' || card.budgetRange === '1000-3000') {
+      score += 40
+      reasons.push('预算较高，适合重要场合和亲近的人')
+      suitableRecipients.push('mother', 'wife', 'elder', 'girlfriend')
+      suitableFestivals.push('mothers-day', 'anniversary', 'birthday', 'mid-autumn', 'spring-festival')
+    } else if (card.budgetRange === '3000-plus') {
+      score += 30
+      reasons.push('贵重礼物，适合最重要的纪念日或至亲')
+      suitableRecipients.push('wife', 'mother', 'elder')
+      suitableFestivals.push('anniversary', 'birthday', 'spring-festival')
+    } else {
+      score += 20
+      reasons.push('尚未标注预算，完善后推荐更精准')
+      suitableRecipients.push('friend', 'sister')
+    }
+
+    if (card.isPaired) {
+      score += 10
+      reasons.push('成对耳饰寓意圆满，赠礼更显心意')
+    }
+
+    if (style.elegance >= 60) {
+      score += 8
+      reasons.push('风格优雅大方，适配多数审美')
+      suitableRecipients.push('mother', 'elder', 'wife')
+    }
+    if (style.trendy >= 60) {
+      score += 8
+      reasons.push('款式时尚新潮，适合年轻群体')
+      suitableRecipients.push('girlfriend', 'sister', 'friend', 'child')
+      suitableFestivals.push('valentines', 'qixi', 'graduation', 'birthday')
+    }
+    if (style.romantic >= 60) {
+      score += 10
+      reasons.push('浪漫气息浓厚，表达情意恰到好处')
+      suitableRecipients.push('girlfriend', 'wife', 'sister')
+      suitableFestivals.push('valentines', 'qixi', 'anniversary', 'birthday')
+    }
+    if (style.formal >= 60) {
+      score += 7
+      reasons.push('正式场合适用，赠礼稳重有格调')
+      suitableRecipients.push('elder', 'mother', 'colleague', 'teacher')
+      suitableFestivals.push('teachers-day', 'spring-festival', 'mid-autumn')
+    }
+    if (style.casual >= 60) {
+      score += 5
+      reasons.push('日常百搭款，实用性强')
+      suitableRecipients.push('friend', 'colleague', 'child')
+    }
+
+    if (materialInfo) {
+      const risk = assessRisk(materialInfo, 'medium')
+      if (risk.score <= 20) {
+        score += 10
+        reasons.push('材质温和低敏，赠礼无需顾虑过敏问题')
+      } else if (risk.score >= 50) {
+        score -= 15
+        suggestions.push('过敏风险较高，建议确认收礼人肤质后再赠，或附上备用耳针')
+      }
+
+      if (['sterling-silver', 'gold', 'rose-gold', 'platinum', 'pearl', 'gemstone'].includes(materialInfo.mainMaterial)) {
+        score += 8
+        reasons.push(`${materialTypeLabels[materialInfo.mainMaterial]}材质显档次，赠礼有面子`)
+      }
+      if (materialInfo.weightRange === 'very-light' || materialInfo.weightRange === 'light') {
+        score += 5
+        reasons.push('轻盈舒适，长时间佩戴无负担')
+      }
+    }
+
+    if (tags.includes('隆重华丽')) {
+      suitableFestivals.push('wedding' as FestivalTag, 'anniversary')
+    }
+    if (tags.includes('简约精致') || tags.includes('干练专业')) {
+      suitableRecipients.push('colleague', 'teacher')
+      suitableFestivals.push('teachers-day', 'housewarming', 'thank-you')
+    }
+
+    if (card.suitableForGift) {
+      score += 10
+    }
+
+    if (card.festivalTags.length > 0) {
+      score += 5
+      for (const f of card.festivalTags) {
+        if (!suitableFestivals.includes(f)) suitableFestivals.push(f)
+      }
+    }
+    if (card.giftRecipient) {
+      score += 5
+      if (!suitableRecipients.includes(card.giftRecipient as GiftRecipient)) {
+        suitableRecipients.push(card.giftRecipient as GiftRecipient)
+      }
+    }
+
+    if (suggestions.length === 0) {
+      suggestions.push('精美礼盒包装可提升赠礼仪式感')
+      suggestions.push('附上手写贺卡，表达真挚心意')
+    }
+
+    const finalScore = Math.min(100, Math.max(0, Math.round(score)))
+
+    return {
+      score: finalScore,
+      reasons: [...new Set(reasons)].slice(0, 6),
+      suitableRecipients: [...new Set(suitableRecipients)].slice(0, 6),
+      suitableFestivals: [...new Set(suitableFestivals)].slice(0, 8),
+      suggestions: suggestions.slice(0, 4),
+    }
+  }
+
+  function calculatePriorityScore(card: StorageCard): number {
+    let score = 0
+    if (card.isFavorite) score += 25
+    const style = guessEarringStyle(card)
+    const giftRec = generateGiftRecommendation(card)
+    score += Math.round(giftRec.score * 0.3)
+
+    if (card.suitableForGift) {
+      const upcomingFestival = getUpcomingFestivals(60)
+      const match = card.festivalTags.some((f) => upcomingFestival.some((u) => u.tag === f))
+      if (match) score += 20
+    }
+
+    if (card.lastWornAt) {
+      const daysSince = (Date.now() - card.lastWornAt) / (1000 * 60 * 60 * 24)
+      if (daysSince >= 30) score += 15
+      else if (daysSince >= 14) score += 8
+    } else {
+      score += 5
+    }
+
+    score += Math.round(style.formal * 0.1)
+    return Math.min(100, Math.max(0, score))
+  }
+
+  function generateStorageScoreCard(card: StorageCard): StorageScoreCard {
+    const materialInfo = card.materialInfoId
+      ? materialInfoList.value.find((m) => m.id === card.materialInfoId)
+      : null
+    let riskLevel: RiskLevel = 'low'
+    if (materialInfo) {
+      const risk = assessRisk(materialInfo, 'medium')
+      riskLevel = risk.level
+    }
+    return {
+      storageScore: calculateStorageScore(card),
+      giftScore: generateGiftRecommendation(card).score,
+      priorityScore: calculatePriorityScore(card),
+      riskLevel,
+      storageSuggestions: generateStorageSuggestions(card),
+      giftRecommendation: generateGiftRecommendation(card),
+    }
+  }
+
+  function calculateStorageScore(card: StorageCard): number {
+    let score = 50
+    if (card.storageBoxNumber && card.storageBoxNumber.trim()) score += 15
+    if (card.isPaired) score += 10
+    if (card.scene) score += 8
+    if (card.notes) score += 7
+    if (card.materialInfoId) score += 10
+    if (card.lastWornAt) score += 5
+    return Math.min(100, Math.max(0, score))
+  }
+
+  function createStorageCard(
+    data: Partial<StorageCard> & {
+      name: string
+      thumbnail: string
+      leftEarring: EarringInstance
+      rightEarring: EarringInstance
+      effect: EffectConfig
+    }
+  ): StorageCard {
+    const now = Date.now()
+    const card: StorageCard = {
+      id: 'sc-' + now.toString(36) + Math.random().toString(36).slice(2, 6),
+      schemeId: data.schemeId || null,
+      materialInfoId: data.materialInfoId || null,
+      name: data.name,
+      thumbnail: data.thumbnail,
+      storageBoxNumber: data.storageBoxNumber || '',
+      isPaired: data.isPaired !== undefined ? data.isPaired : true,
+      lastWornAt: data.lastWornAt || null,
+      suitableForGift: data.suitableForGift || false,
+      giftRecipient: data.giftRecipient || '',
+      budgetRange: data.budgetRange || '',
+      festivalTags: data.festivalTags || [],
+      isFavorite: data.isFavorite || false,
+      notes: data.notes || '',
+      scene: data.scene || '',
+      leftEarring: JSON.parse(JSON.stringify(data.leftEarring)),
+      rightEarring: JSON.parse(JSON.stringify(data.rightEarring)),
+      effect: JSON.parse(JSON.stringify(data.effect)),
+      createdAt: now,
+      updatedAt: now,
+    }
+    storageCards.value.unshift(card)
+    return card
+  }
+
+  function updateStorageCard(id: string, updates: Partial<StorageCard>) {
+    const card = storageCards.value.find((c) => c.id === id)
+    if (card) {
+      Object.assign(card, updates, { updatedAt: Date.now() })
+    }
+  }
+
+  function deleteStorageCard(id: string) {
+    storageCards.value = storageCards.value.filter((c) => c.id !== id)
+  }
+
+  function toggleStorageCardFavorite(id: string) {
+    const card = storageCards.value.find((c) => c.id === id)
+    if (card) {
+      card.isFavorite = !card.isFavorite
+      card.updatedAt = Date.now()
+    }
+  }
+
+  function renameStorageCard(id: string, newName: string) {
+    const card = storageCards.value.find((c) => c.id === id)
+    if (card && newName.trim()) {
+      card.name = newName.trim()
+      card.updatedAt = Date.now()
+    }
+  }
+
+  function copyStorageCard(id: string): StorageCard | null {
+    const card = storageCards.value.find((c) => c.id === id)
+    if (!card) return null
+    const now = Date.now()
+    const newCard: StorageCard = {
+      ...JSON.parse(JSON.stringify(card)),
+      id: 'sc-' + now.toString(36) + Math.random().toString(36).slice(2, 6),
+      name: card.name + ' (副本)',
+      createdAt: now,
+      updatedAt: now,
+    }
+    const idx = storageCards.value.findIndex((c) => c.id === id)
+    storageCards.value.splice(idx + 1, 0, newCard)
+    return newCard
+  }
+
+  function createStorageCardFromScheme(schemeId: string): StorageCard | null {
+    const scheme = schemes.value.find((s) => s.id === schemeId)
+    if (!scheme) return null
+    const existing = storageCards.value.find((c) => c.schemeId === schemeId)
+    if (existing) return existing
+    const materialInfo = materialInfoList.value.find((m) => m.schemeId === schemeId)
+    return createStorageCard({
+      schemeId: scheme.id,
+      materialInfoId: materialInfo?.id || null,
+      name: scheme.name,
+      thumbnail: scheme.thumbnail,
+      leftEarring: scheme.leftEarring,
+      rightEarring: scheme.rightEarring,
+      effect: scheme.effect,
+      budgetRange: (scheme.budget ? guessBudgetRange(scheme.budget) : '') as BudgetRange | '',
+    })
+  }
+
+  function createStorageCardFromSlot(slotId: string): StorageCard | null {
+    const slot = workspace.value.slots.find((s) => s.id === slotId)
+    if (!slot) return null
+    const existing = storageCards.value.find((c) => c.schemeId === slotId)
+    if (existing) return existing
+    const materialInfo = materialInfoList.value.find((m) => m.slotId === slotId)
+    return createStorageCard({
+      schemeId: null,
+      materialInfoId: materialInfo?.id || null,
+      name: slot.name,
+      thumbnail: slot.thumbnail,
+      leftEarring: slot.leftEarring,
+      rightEarring: slot.rightEarring,
+      effect: slot.effect,
+      budgetRange: (slot.budget ? guessBudgetRange(slot.budget) : '') as BudgetRange | '',
+    })
+  }
+
+  function createStorageCardFromMaterial(materialInfoId: string): StorageCard | null {
+    const materialInfo = materialInfoList.value.find((m) => m.id === materialInfoId)
+    if (!materialInfo) return null
+    const existing = storageCards.value.find((c) => c.materialInfoId === materialInfoId)
+    if (existing) return existing
+    let leftEarring = createDefaultEarring('left')
+    let rightEarring = createDefaultEarring('right')
+    let effect: EffectConfig = { hairstyleOverlay: false, makeupTone: 'natural', lightingMode: 'natural' }
+    if (materialInfo.schemeId) {
+      const scheme = schemes.value.find((s) => s.id === materialInfo.schemeId)
+      if (scheme) {
+        leftEarring = scheme.leftEarring
+        rightEarring = scheme.rightEarring
+        effect = scheme.effect
+      }
+    } else if (materialInfo.inspirationCardId) {
+      const card = inspirationCards.value.find((c) => c.id === materialInfo.inspirationCardId)
+      if (card) {
+        leftEarring = card.leftEarring
+        rightEarring = card.rightEarring
+        effect = card.effect
+      }
+    }
+    return createStorageCard({
+      schemeId: materialInfo.schemeId,
+      materialInfoId: materialInfo.id,
+      name: materialInfo.name,
+      thumbnail: materialInfo.thumbnail,
+      leftEarring,
+      rightEarring,
+      effect,
+      lastWornAt: materialInfo.lastWornAt,
+    })
+  }
+
+  function guessBudgetRange(text: string): BudgetRange {
+    const t = text.replace(/[^\d]/g, '')
+    if (!t) return '100-300'
+    const n = parseInt(t, 10)
+    if (n < 50) return 'under-50'
+    if (n < 100) return '50-100'
+    if (n < 300) return '100-300'
+    if (n < 500) return '300-500'
+    if (n < 1000) return '500-1000'
+    if (n < 3000) return '1000-3000'
+    return '3000-plus'
+  }
+
+  function getUpcomingFestivals(days: number = 60): { tag: FestivalTag; date: string; daysLeft: number }[] {
+    const result: { tag: FestivalTag; date: string; daysLeft: number }[] = []
+    const now = new Date()
+    const todayMs = now.getTime()
+    const targetMs = todayMs + days * 24 * 60 * 60 * 1000
+    const festivalFixedDates: Partial<Record<FestivalTag, { month: number; day: number }>> = {
+      'valentines': { month: 2, day: 14 },
+      'womens-day': { month: 3, day: 8 },
+      'teachers-day': { month: 9, day: 10 },
+      'national-day': { month: 10, day: 1 },
+      'christmas': { month: 12, day: 25 },
+      'new-year': { month: 1, day: 1 },
+    }
+    const currentYear = now.getFullYear()
+    for (const years of [currentYear, currentYear + 1]) {
+      for (const [tag, md] of Object.entries(festivalFixedDates) as [FestivalTag, { month: number; day: number }][]) {
+        const d = new Date(years, md.month - 1, md.day)
+        const diffMs = d.getTime() - todayMs
+        const daysLeft = Math.ceil(diffMs / (24 * 60 * 60 * 1000))
+        if (daysLeft >= 0 && d.getTime() <= targetMs) {
+          result.push({ tag, date: formatDate(d), daysLeft })
+        }
+      }
+    }
+    const monthFestivals: FestivalTag[] = Object.entries(festivalTagMonth)
+      .filter(([_, months]) => {
+        const targetMonths = new Set<number>()
+        for (let i = 0; i < days; i++) {
+          const d = new Date(todayMs + i * 24 * 60 * 60 * 1000)
+          targetMonths.add(d.getMonth() + 1)
+        }
+        return months.some((m) => targetMonths.has(m))
+      })
+      .map(([tag]) => tag as FestivalTag)
+    for (const tag of monthFestivals) {
+      if (!result.some((r) => r.tag === tag)) {
+        result.push({ tag, date: '', daysLeft: 30 })
+      }
+    }
+    result.sort((a, b) => a.daysLeft - b.daysLeft)
+    return result
+  }
+
+  function generateStorageReminders(days: number = 30): StorageReminder[] {
+    const reminders: StorageReminder[] = []
+    const today = new Date()
+    const todayStr = formatDate(today)
+    const upcomingFestivals = getUpcomingFestivals(days)
+
+    for (const card of storageCards.value) {
+      if (card.lastWornAt) {
+        const daysSince = Math.floor((Date.now() - card.lastWornAt) / (1000 * 60 * 60 * 24))
+        if (daysSince >= 14 && daysSince <= days) {
+          reminders.push({
+            id: 'rem-wear-' + card.id,
+            cardId: card.id,
+            cardName: card.name,
+            thumbnail: card.thumbnail,
+            type: 'wear',
+            title: '佩戴提醒',
+            content: `已 ${daysSince} 天未佩戴「${card.name}」，是时候拿出来搭配啦！`,
+            targetDate: todayStr,
+            createdAt: Date.now(),
+          })
+        }
+      }
+
+      if (card.suitableForGift) {
+        for (const fest of upcomingFestivals) {
+          if (card.festivalTags.includes(fest.tag) || (fest.daysLeft <= 14 && card.giftRecipient)) {
+            reminders.push({
+              id: `rem-gift-${card.id}-${fest.tag}`,
+              cardId: card.id,
+              cardName: card.name,
+              thumbnail: card.thumbnail,
+              type: 'festival',
+              title: `${festivalTagLabels[fest.tag]}赠礼提醒`,
+              content: `${festivalTagLabels[fest.tag]}临近，「${card.name}」适合作为礼物${card.giftRecipient ? '送给' + giftRecipientLabels[card.giftRecipient as GiftRecipient] : ''}`,
+              targetDate: fest.date || addDays(todayStr, fest.daysLeft),
+              festivalTag: fest.tag,
+              createdAt: Date.now(),
+            })
+            break
+          }
+        }
+      }
+
+      const materialInfo = card.materialInfoId
+        ? materialInfoList.value.find((m) => m.id === card.materialInfoId)
+        : null
+      if (materialInfo && materialInfo.lastCleanedAt) {
+        const cleaningDays = getCleaningCycleDays(materialInfo.cleaningCycle, materialInfo.customCleaningDays)
+        const daysSinceClean = Math.floor((Date.now() - materialInfo.lastCleanedAt) / (1000 * 60 * 60 * 24))
+        const daysUntil = cleaningDays - daysSinceClean
+        if (daysUntil >= 0 && daysUntil <= 7) {
+          reminders.push({
+            id: 'rem-clean-' + card.id,
+            cardId: card.id,
+            cardName: card.name,
+            thumbnail: card.thumbnail,
+            type: 'clean',
+            title: '清洁保养提醒',
+            content: daysUntil === 0
+              ? `「${card.name}」今天该清洁保养了，延长首饰寿命！`
+              : `「${card.name}」还有 ${daysUntil} 天需要清洁保养`,
+            targetDate: addDays(todayStr, daysUntil),
+            createdAt: Date.now(),
+          })
+        } else if (daysUntil < 0) {
+          reminders.push({
+            id: 'rem-clean-' + card.id,
+            cardId: card.id,
+            cardName: card.name,
+            thumbnail: card.thumbnail,
+            type: 'clean',
+            title: '清洁保养逾期',
+            content: `「${card.name}」已逾期 ${Math.abs(daysUntil)} 天未清洁，请尽快保养！`,
+            targetDate: todayStr,
+            createdAt: Date.now(),
+          })
+        }
+      }
+    }
+
+    reminders.sort((a, b) => a.targetDate.localeCompare(b.targetDate))
+    return reminders
+  }
+
+  function markStorageCardWornToday(id: string) {
+    const card = storageCards.value.find((c) => c.id === id)
+    if (card) {
+      card.lastWornAt = Date.now()
+      card.updatedAt = Date.now()
+      if (card.materialInfoId) {
+        const mat = materialInfoList.value.find((m) => m.id === card.materialInfoId)
+        if (mat) {
+          mat.lastWornAt = Date.now()
+          mat.updatedAt = Date.now()
+        }
+      }
+    }
+  }
+
+  function exportStorageGiftCard(cardId: string): string {
+    const card = storageCards.value.find((c) => c.id === cardId)
+    if (!card) return ''
+
+    const scoreCard = generateStorageScoreCard(card)
+    const giftRec = scoreCard.giftRecommendation
+    const canvas = document.createElement('canvas')
+    const w = 650
+    const h = 1000
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')!
+
+    const grd = ctx.createLinearGradient(0, 0, 0, h)
+    grd.addColorStop(0, '#1a1a2e')
+    grd.addColorStop(0.5, '#16213e')
+    grd.addColorStop(1, '#0f1624')
+    ctx.fillStyle = grd
+    ctx.fillRect(0, 0, w, h)
+
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.25)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(20, 20, w - 40, h - 40)
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.1)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(30, 30, w - 60, h - 60)
+
+    ctx.font = 'bold 28px Playfair Display, Georgia, serif'
+    ctx.fillStyle = '#e8c9a0'
+    ctx.textAlign = 'center'
+    ctx.fillText('Storage & Gift Planner', w / 2, 65)
+
+    ctx.font = '13px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(245, 240, 232, 0.6)'
+    ctx.fillText('耳饰收纳赠礼建议卡', w / 2, 90)
+
+    let y = 120
+
+    const thumbW = 180
+    const thumbH = 230
+    const thumbX = (w - thumbW) / 2
+    const thumbY = y
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+    ctx.fillRect(thumbX - 3, thumbY - 3, thumbW + 6, thumbH + 6)
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.4)'
+    ctx.lineWidth = 1
+    ctx.strokeRect(thumbX - 3, thumbY - 3, thumbW + 6, thumbH + 6)
+    ctx.fillStyle = '#0f1624'
+    ctx.fillRect(thumbX, thumbY, thumbW, thumbH)
+
+    if (card.thumbnail) {
+      const thumbImg = new Image()
+      thumbImg.src = card.thumbnail
+      if (thumbImg.complete && thumbImg.naturalWidth > 0) {
+        const scale = Math.min(thumbW / thumbImg.width, thumbH / thumbImg.height)
+        const dw = thumbImg.width * scale
+        const dh = thumbImg.height * scale
+        const dx = thumbX + (thumbW - dw) / 2
+        const dy = thumbY + (thumbH - dh) / 2
+        ctx.drawImage(thumbImg, dx, dy, dw, dh)
+      }
+    }
+
+    y += thumbH + 25
+
+    ctx.font = 'bold 18px Noto Sans SC, sans-serif'
+    ctx.fillStyle = '#f5f0e8'
+    ctx.textAlign = 'center'
+    ctx.fillText(card.name, w / 2, y)
+    y += 25
+
+    const scoreStartY = y
+    const giftScoreX = w / 2
+    const giftScoreY = scoreStartY + 40
+    const giftR = 38
+
+    ctx.beginPath()
+    ctx.arc(giftScoreX, giftScoreY, giftR, 0, Math.PI * 2)
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+    ctx.lineWidth = 8
+    ctx.stroke()
+
+    const startAngle = -Math.PI / 2
+    const endAngle = startAngle + (giftRec.score / 100) * Math.PI * 2
+    ctx.beginPath()
+    ctx.arc(giftScoreX, giftScoreY, giftR, startAngle, endAngle)
+    const getSc = (s: number) => s >= 85 ? '#4ade80' : s >= 70 ? '#facc15' : s >= 50 ? '#fb923c' : '#ef4444'
+    ctx.strokeStyle = getSc(giftRec.score)
+    ctx.lineWidth = 8
+    ctx.lineCap = 'round'
+    ctx.stroke()
+
+    ctx.font = 'bold 24px Playfair Display, Georgia, serif'
+    ctx.fillStyle = getSc(giftRec.score)
+    ctx.textAlign = 'center'
+    ctx.fillText(String(giftRec.score), giftScoreX, giftScoreY + 8)
+
+    ctx.font = '11px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(245, 240, 232, 0.5)'
+    ctx.fillText('赠礼评分', giftScoreX, giftScoreY + 26)
+
+    const leftT = earringTemplates.find((t) => t.id === card.leftEarring.templateId)
+    const rightT = earringTemplates.find((t) => t.id === card.rightEarring.templateId)
+
+    ctx.textAlign = 'left'
+    const infoLeftX = 60
+    ctx.font = '10px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(148,163,184,0.7)'
+    ctx.fillText('左耳款式', infoLeftX, giftScoreY - 10)
+    ctx.fillStyle = '#60a5fa'
+    ctx.font = 'bold 12px Noto Sans SC, sans-serif'
+    ctx.fillText(`${leftT?.name || '-'}`, infoLeftX, giftScoreY + 6)
+    ctx.fillStyle = 'rgba(148,163,184,0.5)'
+    ctx.font = '10px Noto Sans SC, sans-serif'
+    ctx.fillText(`${leftT ? categoryLabels[leftT.category] : ''}`, infoLeftX, giftScoreY + 22)
+
+    ctx.textAlign = 'right'
+    const infoRightX = w - 60
+    ctx.font = '10px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(148,163,184,0.7)'
+    ctx.fillText('右耳款式', infoRightX, giftScoreY - 10)
+    ctx.fillStyle = '#f472b6'
+    ctx.font = 'bold 12px Noto Sans SC, sans-serif'
+    ctx.fillText(`${rightT?.name || '-'}`, infoRightX, giftScoreY + 6)
+    ctx.fillStyle = 'rgba(148,163,184,0.5)'
+    ctx.font = '10px Noto Sans SC, sans-serif'
+    ctx.fillText(`${rightT ? categoryLabels[rightT.category] : ''}`, infoRightX, giftScoreY + 22)
+
+    y = giftScoreY + 60
+
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.15)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(60, y)
+    ctx.lineTo(w - 60, y)
+    ctx.stroke()
+
+    y += 20
+
+    ctx.font = 'bold 14px Noto Sans SC, sans-serif'
+    ctx.fillStyle = '#e8c9a0'
+    ctx.textAlign = 'left'
+    ctx.fillText('📦 收纳信息', 60, y)
+    y += 22
+
+    const storageRows: [string, string][] = [
+      ['收纳盒编号', card.storageBoxNumber || '未设置'],
+      ['是否成对', card.isPaired ? '是 ✓' : '否（单只）'],
+      ['最后佩戴', card.lastWornAt ? new Date(card.lastWornAt).toLocaleDateString('zh-CN') : '暂无记录'],
+      ['使用场景', card.scene ? outfitSceneLabels[card.scene] : '未标记'],
+    ]
+    ctx.font = '11px Noto Sans SC, sans-serif'
+    for (const [label, value] of storageRows) {
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.5)'
+      ctx.fillText(label, 70, y)
+      ctx.fillStyle = '#f5f0e8'
+      ctx.textAlign = 'right'
+      ctx.fillText(value, w - 70, y)
+      ctx.textAlign = 'left'
+      y += 20
+    }
+
+    y += 8
+
+    const giftRows: [string, string][] = [
+      ['适合送礼', card.suitableForGift ? '是 ✓' : '否'],
+      ['赠礼对象', card.giftRecipient ? giftRecipientLabels[card.giftRecipient as GiftRecipient] : '未设置'],
+      ['预算区间', card.budgetRange ? budgetRangeLabels[card.budgetRange as BudgetRange] : '未设置'],
+      ['节日标签', card.festivalTags.length > 0 ? card.festivalTags.map((f) => festivalTagLabels[f]).join('、') : '无'],
+    ]
+    ctx.font = '11px Noto Sans SC, sans-serif'
+    for (const [label, value] of giftRows) {
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.5)'
+      ctx.fillText(label, 70, y)
+      ctx.fillStyle = '#f5f0e8'
+      ctx.textAlign = 'right'
+      let dispValue = value
+      if (dispValue.length > 14) dispValue = dispValue.slice(0, 13) + '…'
+      ctx.fillText(dispValue, w - 70, y)
+      ctx.textAlign = 'left'
+      y += 20
+    }
+
+    y += 10
+
+    ctx.strokeStyle = 'rgba(212, 165, 116, 0.15)'
+    ctx.beginPath()
+    ctx.moveTo(60, y)
+    ctx.lineTo(w - 60, y)
+    ctx.stroke()
+
+    y += 20
+
+    ctx.font = 'bold 14px Noto Sans SC, sans-serif'
+    ctx.fillStyle = '#e8c9a0'
+    ctx.fillText('🎁 赠礼推荐理由', 60, y)
+    y += 22
+
+    ctx.font = '11px Noto Sans SC, sans-serif'
+    for (const reason of giftRec.reasons.slice(0, 4)) {
+      ctx.fillStyle = 'rgba(245, 240, 232, 0.7)'
+      const text = `✨ ${reason}`
+      const maxWidth = w - 140
+      const words = text.split('')
+      let line = ''
+      for (const word of words) {
+        const testLine = line + word
+        const metrics = ctx.measureText(testLine)
+        if (metrics.width > maxWidth) {
+          ctx.fillText(line, 70, y)
+          line = '   ' + word
+          y += 18
+        } else {
+          line = testLine
+        }
+      }
+      ctx.fillText(line, 70, y)
+      y += 18
+    }
+
+    if (giftRec.suggestions.length > 0) {
+      y += 8
+
+      ctx.strokeStyle = 'rgba(212, 165, 116, 0.15)'
+      ctx.beginPath()
+      ctx.moveTo(60, y)
+      ctx.lineTo(w - 60, y)
+      ctx.stroke()
+
+      y += 20
+
+      ctx.font = 'bold 14px Noto Sans SC, sans-serif'
+      ctx.fillStyle = '#e8c9a0'
+      ctx.fillText('💡 贴心建议', 60, y)
+      y += 22
+
+      ctx.font = '10px Noto Sans SC, sans-serif'
+      for (const suggestion of giftRec.suggestions.slice(0, 3)) {
+        ctx.fillStyle = 'rgba(245, 240, 232, 0.65)'
+        ctx.fillText(`• ${suggestion}`, 70, y)
+        y += 16
+      }
+    }
+
+    if (scoreCard.storageSuggestions.length > 0) {
+      y += 8
+
+      ctx.strokeStyle = 'rgba(212, 165, 116, 0.15)'
+      ctx.beginPath()
+      ctx.moveTo(60, y)
+      ctx.lineTo(w - 60, y)
+      ctx.stroke()
+
+      y += 20
+
+      ctx.font = 'bold 14px Noto Sans SC, sans-serif'
+      ctx.fillStyle = '#e8c9a0'
+      ctx.fillText('📋 收纳建议', 60, y)
+      y += 22
+
+      ctx.font = '10px Noto Sans SC, sans-serif'
+      const topSuggestions = scoreCard.storageSuggestions.slice(0, 2)
+      for (const suggestion of topSuggestions) {
+        ctx.fillStyle = 'rgba(245, 240, 232, 0.65)'
+        const iconMap: Record<string, string> = { storage: '📦', gift: '🎁', wear: '✨', care: '🧼' }
+        const text = `${iconMap[suggestion.category] || '💡'} ${suggestion.title}：${suggestion.content}`
+        const maxWidth = w - 140
+        const words = text.split('')
+        let line = ''
+        for (const word of words) {
+          const testLine = line + word
+          const metrics = ctx.measureText(testLine)
+          if (metrics.width > maxWidth) {
+            ctx.fillText(line, 70, y)
+            line = '   ' + word
+            y += 15
+          } else {
+            line = testLine
+          }
+        }
+        ctx.fillText(line, 70, y)
+        y += 16
+      }
+    }
+
+    y = h - 45
+    ctx.font = '10px Noto Sans SC, sans-serif'
+    ctx.fillStyle = 'rgba(245, 240, 232, 0.4)'
+    ctx.textAlign = 'center'
+    ctx.fillText(`生成时间: ${new Date().toLocaleString('zh-CN')} | 收纳与赠礼规划参考`, w / 2, y)
+
+    return canvas.toDataURL('image/png')
+  }
+
   return {
     photo,
     photoWidth,
@@ -1924,5 +2950,26 @@ export const useEarringStore = defineStore('earring', () => {
     createMaterialFromSlot,
     createMaterialFromInspiration,
     exportMaterialReminderCard,
+    storageCards,
+    deriveStyleTagsFromCard,
+    guessEarringStyle,
+    generateStorageSuggestions,
+    generateGiftRecommendation,
+    calculatePriorityScore,
+    generateStorageScoreCard,
+    calculateStorageScore,
+    createStorageCard,
+    updateStorageCard,
+    deleteStorageCard,
+    toggleStorageCardFavorite,
+    renameStorageCard,
+    copyStorageCard,
+    createStorageCardFromScheme,
+    createStorageCardFromSlot,
+    createStorageCardFromMaterial,
+    getUpcomingFestivals,
+    generateStorageReminders,
+    markStorageCardWornToday,
+    exportStorageGiftCard,
   }
 })

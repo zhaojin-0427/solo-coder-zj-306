@@ -28,10 +28,12 @@ import {
   CheckCircle,
   Clock,
   Gem,
+  Package,
 } from 'lucide-vue-next'
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'open-storage'): void
 }>()
 
 const store = useEarringStore()
@@ -230,6 +232,12 @@ function exportReminderCard(materialId: string) {
   }
 }
 
+function handleGenerateStorageCard(materialInfoId: string, e: Event) {
+  e.stopPropagation()
+  store.createStorageCardFromMaterial(materialInfoId)
+  emit('open-storage')
+}
+
 function getMaterialRisk(materialId: string) {
   const mat = store.getMaterialInfo(materialId)
   if (!mat) return null
@@ -345,6 +353,15 @@ function formatDateLabel(dateStr: string) {
                 <p class="text-[9px] text-ivory-muted/60">
                   {{ materialTypeLabels[material.mainMaterial] }}
                 </p>
+              </div>
+              <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  @click="handleGenerateStorageCard(material.id, $event)"
+                  class="p-1 rounded text-ivory-muted/60 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all"
+                  title="加入收纳清单"
+                >
+                  <Package class="w-2.5 h-2.5" />
+                </button>
               </div>
               <div
                 v-if="getMaterialRisk(material.id)"

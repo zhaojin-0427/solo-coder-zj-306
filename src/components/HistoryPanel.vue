@@ -16,12 +16,14 @@ import {
   X,
   Palette,
   ShieldAlert,
+  Package,
 } from 'lucide-vue-next'
 import type { Scheme } from '@/types'
 
 const emit = defineEmits<{
   (e: 'enter-inspiration'): void
   (e: 'open-maintenance'): void
+  (e: 'open-storage'): void
 }>()
 
 const store = useEarringStore()
@@ -39,6 +41,12 @@ function handleEnterInspirationFromScheme(scheme: Scheme, e: Event) {
   e.stopPropagation()
   store.loadScheme(scheme)
   emit('enter-inspiration')
+}
+
+function handleGenerateStorageCard(schemeId: string, e: Event) {
+  e.stopPropagation()
+  store.createStorageCardFromScheme(schemeId)
+  emit('open-storage')
 }
 
 const searchQuery = ref('')
@@ -310,6 +318,13 @@ const filterOptions = [
                     title="重命名"
                   >
                     <Pencil class="w-3 h-3" />
+                  </button>
+                  <button
+                    @click="handleGenerateStorageCard(scheme.id, $event)"
+                    class="p-1 rounded text-ivory-muted/60 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all"
+                    title="加入收纳清单"
+                  >
+                    <Package class="w-3 h-3" />
                   </button>
                   <button
                     @click="handleGenerateMaintenance(scheme.id, $event)"
